@@ -4,7 +4,7 @@ Un sistema web responsivo para la gestión y seguimiento de equipajes en tiempo 
 
 **🌐 [Acceder al sistema en vivo](https://fedeegea.pythonanywhere.com/)**
 
-![Sistema de Gestión de Equipajes](https://via.placeholder.com/800x400?text=Sistema+de+Gesti%C3%B3n+de+Equipajes)
+![Sistema de Gestión de Equipajes]([https://via.placeholder.com/800x400?text=Sistema+de+Gesti%C3%B3n+de+Equipajes](https://github.com/fedeegea/ArqApp-03/blob/main/dashboard.png))
 
 ## Características
 
