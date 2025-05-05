@@ -2,7 +2,9 @@
 
 Un sistema web responsivo para la gestión y seguimiento de equipajes en tiempo real para aeropuertos y aerolíneas.
 
-![Sistema de Gestión de Equipajes](https://fedeegea.pythonanywhere.com/)
+**🌐 [Acceder al sistema en vivo](https://fedeegea.pythonanywhere.com/)**
+
+![Sistema de Gestión de Equipajes](https://via.placeholder.com/800x400?text=Sistema+de+Gesti%C3%B3n+de+Equipajes)
 
 ## Características
 
