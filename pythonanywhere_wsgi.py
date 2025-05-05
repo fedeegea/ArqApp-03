@@ -11,6 +11,11 @@ path = '/home/fedeegea/ArqApp-03'
 if path not in sys.path:
     sys.path.insert(0, path)
 
+# Activar el entorno virtual
+activate_this = os.path.join(path, 'venv/bin/activate_this.py')
+with open(activate_this) as file_:
+    exec(file_.read(), dict(__file__=activate_this))
+
 # Importar la aplicación Flask
 from app import app as application
 
