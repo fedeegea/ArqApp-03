@@ -33,8 +33,8 @@ Un sistema web responsivo para la gestión y seguimiento de equipajes en tiempo 
 1. Clona este repositorio:
 
 ```bash
-git clone https://github.com/tu-usuario/sistema-gestion-equipajes.git
-cd sistema-gestion-equipajes
+git clone https://github.com/fedeegea/ArqApp-03.git
+cd ArqApp-03
 ```
 
 2. Crea un entorno virtual (opcional pero recomendado):
@@ -100,6 +100,8 @@ ArqApp-03/
 ├── setup_db.py            # Script para inicializar la base de datos
 ├── equipajes.db           # Base de datos SQLite
 ├── requirements.txt       # Dependencias del proyecto
+├── generar_datos_prueba.py # Script para generar datos de prueba
+├── docker-compose.yml     # Configuración para despliegue con Docker
 │
 ├── static/                # Archivos estáticos
 │   ├── css/              
@@ -128,6 +130,21 @@ Para desplegar esta aplicación en un entorno de producción, se recomienda:
 2. Configurar un servidor web como Nginx como proxy reverso.
 
 3. Considerar una base de datos más robusta como PostgreSQL o MySQL para entornos con alta carga.
+
+### Despliegue con Docker
+
+El proyecto incluye un archivo `docker-compose.yml` para facilitar el despliegue con Docker:
+
+```bash
+# Construir y levantar los contenedores
+docker-compose up -d
+
+# Ver logs
+docker-compose logs -f
+
+# Detener contenedores
+docker-compose down
+```
 
 ## Contribuir
 
