@@ -1,0 +1,65 @@
+version: '3'
+
+services:
+  # Servicio de Zookeeper - necesario para coordinar los brokers de Kafka
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.3.2
+    container_name: zookeeper
+    ports:
+      - "2181:2181"
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    networks:
+      - equipaje_network
+    volumes:
+      - zookeeper_data:/var/lib/zookeeper/data
+      - zookeeper_log:/var/lib/zookeeper/log
+
+  # Servicio de Kafka - broker de mensajes para nuestros eventos
+  kafka:
+    image: confluentinc/cp-kafka:7.3.2
+    container_name: kafka
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+      - "29092:29092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+    networks:
+      - equipaje_network
+    volumes:
+      - kafka_data:/var/lib/kafka/data
+  
+  # Servicio de Grafana - para visualizar los datos almacenados
+  grafana:
+    image: grafana/grafana:9.5.1
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./equipajes.db:/var/lib/grafana/equipajes.db
+    networks:
+      - equipaje_network
+
+networks:
+  equipaje_network:
+    driver: bridge
+
+volumes:
+  zookeeper_data:
+  zookeeper_log:
+  kafka_data:
+  grafana_data:

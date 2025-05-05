@@ -1,0 +1,504 @@
+{% extends "base.html" %}
+
+{% block head %}
+<style>
+    .card-dashboard {
+        transition: transform 0.3s;
+        border-radius: 10px;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    }
+    .card-dashboard:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+    }
+    .bg-equipaje-escaneado {
+        background-color: #e3f2fd;
+    }
+    .bg-equipaje-cargado {
+        background-color: #e8f5e9;
+    }
+    .bg-equipaje-entregado {
+        background-color: #fff8e1;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-12">
+        <h1 class="display-5 mb-4">
+            <i class="fas fa-chart-line me-2"></i>Dashboard
+        </h1>
+        <p class="lead">Monitoreo en tiempo real del sistema de gestión de equipajes.</p>
+    </div>
+</div>
+
+<!-- Estadísticas principales -->
+<div class="row mb-4">
+    <div class="col-md-3 mb-4 mb-md-0">
+        <div class="info-tile position-relative">
+            <i class="fas fa-suitcase-rolling info-tile-icon"></i>
+            <div class="info-tile-title">Total de Equipajes</div>
+            <div class="info-tile-value" id="total-equipajes">-</div>
+            <div class="info-tile-desc">Equipajes registrados en el sistema</div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-4 mb-md-0">
+        <div class="info-tile position-relative">
+            <i class="fas fa-clock info-tile-icon"></i>
+            <div class="info-tile-title">Últimas 24 horas</div>
+            <div class="info-tile-value" id="eventos-recientes">-</div>
+            <div class="info-tile-desc">Eventos registrados recientemente</div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-4 mb-md-0">
+        <div class="info-tile position-relative">
+            <i class="fas fa-qrcode info-tile-icon"></i>
+            <div class="info-tile-title">Equipajes Escaneados</div>
+            <div class="info-tile-value" id="equipajes-escaneados">-</div>
+            <div class="info-tile-desc">En proceso inicial</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="info-tile position-relative">
+            <i class="fas fa-check-circle info-tile-icon"></i>
+            <div class="info-tile-title">Equipajes Entregados</div>
+            <div class="info-tile-value" id="equipajes-entregados">-</div>
+            <div class="info-tile-desc">Proceso completado</div>
+        </div>
+    </div>
+</div>
+
+<!-- Estado del simulador automático -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-robot me-2"></i>Estado del Simulador Automático
+                </h5>
+                <span class="badge bg-success" id="simulador-estado">Activo</span>
+            </div>
+            <div class="card-body">
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle me-2"></i>
+                            El simulador automático genera y procesa eventos de equipaje sin necesidad de ejecutar manualmente el productor y consumidor.
+                        </div>
+                        
+                        <div class="mb-4">
+                            <h6>Información del Simulador</h6>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="text-muted">Valijas activas:</label>
+                                    <h5 id="valijas-activas">0</h5>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="text-muted">Máximo de valijas:</label>
+                                    <h5 id="max-valijas">0</h5>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="text-muted">Intervalo de generación:</label>
+                                    <h5 id="intervalo-generacion">0</h5>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="text-muted">Última actualización:</label>
+                                    <h5 id="ultima-actualizacion">-</h5>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>Valijas en Procesamiento</h6>
+                        <div class="table-responsive">
+                            <table class="table table-hover table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Estado</th>
+                                        <th>Origen → Destino</th>
+                                        <th>Próxima Acción</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tabla-valijas-activas">
+                                    <tr>
+                                        <td colspan="4" class="text-center">
+                                            <div class="spinner-border spinner-border-sm text-primary me-2"></div>
+                                            Cargando datos...
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="progress mt-3">
+                            <div class="progress-bar" id="progress-valijas-activas" role="progressbar" style="width: 0%"></div>
+                        </div>
+                        <small class="text-muted d-block text-end mt-2" id="contador-valijas-activas">0 de 0 valijas activas</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Gráficos y eventos recientes -->
+<div class="row">
+    <div class="col-md-8 mb-4 mb-md-0">
+        <div class="card h-100">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-chart-bar me-2"></i>Distribución de Eventos
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="chart-container">
+                    <canvas id="eventos-chart" height="300"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card h-100">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-history me-2"></i>Eventos Recientes
+                </h5>
+                <button class="btn btn-sm btn-outline-primary" id="btn-refresh-eventos">
+                    <i class="fas fa-sync-alt"></i>
+                </button>
+            </div>
+            <div class="card-body p-0">
+                <div class="list-group list-group-flush" id="lista-eventos-recientes">
+                    <div class="text-center py-4">
+                        <div class="spinner-border text-primary" role="status"></div>
+                        <p class="mt-2">Cargando eventos...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    $(document).ready(function() {
+        // Variables para gráficos
+        let eventosChart = null;
+        
+        // Cargar datos iniciales
+        cargarEstadisticas();
+        cargarEventosRecientes();
+        cargarEstadoSimulador();
+        
+        // Programar actualizaciones periódicas
+        setInterval(cargarEstadisticas, 10000);  // Cada 10 segundos
+        setInterval(cargarEventosRecientes, 15000);  // Cada 15 segundos
+        setInterval(cargarEstadoSimulador, 5000);  // Cada 5 segundos
+        
+        // Botón de actualización manual
+        $('#btn-refresh-eventos').click(function() {
+            cargarEventosRecientes();
+        });
+        
+        // Función para cargar estadísticas
+        function cargarEstadisticas() {
+            $.ajax({
+                url: '/api/estadisticas',
+                type: 'GET',
+                success: function(data) {
+                    // Actualizar contadores
+                    $('#total-equipajes').text(data.valijas_unicas);
+                    $('#eventos-recientes').text(data.ultimas_24h);
+                    
+                    // Extraer datos para el gráfico
+                    const tipos = [];
+                    const cantidades = [];
+                    let escaneados = 0;
+                    let entregados = 0;
+                    
+                    data.por_tipo.forEach(function(item) {
+                        tipos.push(item.evento.replace('equipaje_', ''));
+                        cantidades.push(item.cantidad);
+                        
+                        if (item.evento === 'equipaje_escaneado') {
+                            escaneados = item.cantidad;
+                        } else if (item.evento === 'equipaje_entregado') {
+                            entregados = item.cantidad;
+                        }
+                    });
+                    
+                    // Actualizar contadores específicos
+                    $('#equipajes-escaneados').text(escaneados);
+                    $('#equipajes-entregados').text(entregados);
+                    
+                    // Actualizar o crear gráfico
+                    actualizarGraficoEventos(tipos, cantidades);
+                },
+                error: function(err) {
+                    console.error('Error al cargar estadísticas:', err);
+                    mostrarNotificacion('Error al cargar estadísticas: ' + 
+                                      (err.responseJSON?.error || err.statusText || 'Error desconocido'), 
+                                      'danger');
+                }
+            });
+        }
+        
+        // Función para actualizar el gráfico de eventos
+        function actualizarGraficoEventos(tipos, cantidades) {
+            const ctx = document.getElementById('eventos-chart').getContext('2d');
+            
+            // Colores para cada tipo de evento
+            const colores = {
+                'escaneado': 'rgba(13, 110, 253, 0.7)',
+                'cargado': 'rgba(25, 135, 84, 0.7)',
+                'entregado': 'rgba(253, 126, 20, 0.7)'
+            };
+            
+            // Asignar colores según los tipos
+            const backgroundColors = tipos.map(tipo => colores[tipo] || 'rgba(108, 117, 125, 0.7)');
+            
+            if (eventosChart) {
+                // Actualizar datos si el gráfico ya existe
+                eventosChart.data.labels = tipos;
+                eventosChart.data.datasets[0].data = cantidades;
+                eventosChart.data.datasets[0].backgroundColor = backgroundColors;
+                eventosChart.update();
+            } else {
+                // Crear nuevo gráfico
+                eventosChart = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: tipos,
+                        datasets: [{
+                            label: 'Cantidad de Eventos',
+                            data: cantidades,
+                            backgroundColor: backgroundColors,
+                            borderColor: backgroundColors.map(color => color.replace('0.7', '1')),
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                display: false
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        return `${context.dataset.label}: ${context.raw} eventos`;
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: {
+                                    precision: 0
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+        }
+        
+        // Función para cargar eventos recientes
+        function cargarEventosRecientes() {
+            $.ajax({
+                url: '/api/eventos',
+                type: 'GET',
+                success: function(data) {
+                    // Limitar a 10 eventos recientes
+                    const eventosRecientes = data.slice(0, 10);
+                    
+                    if (eventosRecientes.length === 0) {
+                        $('#lista-eventos-recientes').html(
+                            '<div class="text-center py-4">' +
+                            '<i class="fas fa-info-circle fa-2x text-muted mb-3"></i>' +
+                            '<p>No hay eventos recientes</p>' +
+                            '</div>'
+                        );
+                        return;
+                    }
+                    
+                    let html = '';
+                    
+                    eventosRecientes.forEach(function(evento) {
+                        let icono = '';
+                        let badge = '';
+                        
+                        // Determinar icono y badge según tipo de evento
+                        switch (evento.evento) {
+                            case 'equipaje_escaneado':
+                                icono = 'fa-qrcode text-primary';
+                                badge = 'bg-primary';
+                                break;
+                            case 'equipaje_cargado':
+                                icono = 'fa-plane text-success';
+                                badge = 'bg-success';
+                                break;
+                            case 'equipaje_entregado':
+                                icono = 'fa-check-circle text-warning';
+                                badge = 'bg-warning';
+                                break;
+                            default:
+                                icono = 'fa-tag text-secondary';
+                                badge = 'bg-secondary';
+                        }
+                        
+                        html += `
+                            <div class="list-group-item">
+                                <div class="d-flex align-items-center">
+                                    <div class="me-3">
+                                        <i class="fas ${icono} fa-lg"></i>
+                                    </div>
+                                    <div class="flex-grow-1">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <h6 class="mb-0">
+                                                <span class="badge ${badge}">${evento.evento.replace('equipaje_', '')}</span>
+                                                <small class="ms-2 text-muted">${evento.id_valija.substring(0, 8)}...</small>
+                                            </h6>
+                                            <small class="text-muted">${formatearFecha(evento.timestamp)}</small>
+                                        </div>
+                                        <small>
+                                            ${evento.origen} → ${evento.destino} (${evento.peso} kg)
+                                        </small>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    });
+                    
+                    $('#lista-eventos-recientes').html(html);
+                },
+                error: function(err) {
+                    console.error('Error al cargar eventos recientes:', err);
+                    $('#lista-eventos-recientes').html(
+                        '<div class="text-center py-4">' +
+                        '<i class="fas fa-exclamation-circle fa-2x text-warning mb-3"></i>' +
+                        '<p>Error al cargar eventos</p>' +
+                        '<button class="btn btn-sm btn-outline-primary mt-2" id="btn-reintentar">' +
+                        'Reintentar' +
+                        '</button>' +
+                        '</div>'
+                    );
+                    
+                    $('#btn-reintentar').click(function() {
+                        cargarEventosRecientes();
+                    });
+                }
+            });
+        }
+        
+        // Función para cargar estado del simulador
+        function cargarEstadoSimulador() {
+            // Cargar estado general
+            $.ajax({
+                url: '/api/simulador/estado',
+                type: 'GET',
+                success: function(data) {
+                    if (data.activo) {
+                        $('#simulador-estado').removeClass('bg-danger').addClass('bg-success').text('Activo');
+                    } else {
+                        $('#simulador-estado').removeClass('bg-success').addClass('bg-danger').text('Inactivo');
+                    }
+                    
+                    $('#valijas-activas').text(data.valijas_activas);
+                    $('#max-valijas').text(data.max_valijas);
+                    $('#intervalo-generacion').text(data.intervalo_generacion + ' segundos');
+                    $('#ultima-actualizacion').text(new Date(data.timestamp).toLocaleTimeString());
+                    
+                    // Actualizar barra de progreso
+                    const porcentaje = (data.valijas_activas / data.max_valijas) * 100;
+                    $('#progress-valijas-activas').css('width', porcentaje + '%');
+                    $('#contador-valijas-activas').text(`${data.valijas_activas} de ${data.max_valijas} valijas activas`);
+                    
+                    // Cargar detalle de valijas activas
+                    cargarValijasActivas();
+                },
+                error: function(err) {
+                    console.error('Error al cargar estado del simulador:', err);
+                    $('#simulador-estado').removeClass('bg-success').addClass('bg-danger').text('Error');
+                    
+                    $('#tabla-valijas-activas').html(
+                        '<tr><td colspan="4" class="text-center text-danger">' +
+                        'Error al cargar estado del simulador' +
+                        '</td></tr>'
+                    );
+                }
+            });
+        }
+        
+        // Función para cargar detalle de valijas activas
+        function cargarValijasActivas() {
+            $.ajax({
+                url: '/api/simulador/valijas_activas',
+                type: 'GET',
+                success: function(data) {
+                    if (data.length === 0) {
+                        $('#tabla-valijas-activas').html(
+                            '<tr><td colspan="4" class="text-center">' +
+                            'No hay valijas en procesamiento actualmente' +
+                            '</td></tr>'
+                        );
+                        return;
+                    }
+                    
+                    let html = '';
+                    
+                    data.forEach(function(valija) {
+                        let badgeClass = '';
+                        let estadoTexto = '';
+                        
+                        switch (valija.estado_actual) {
+                            case 'equipaje_escaneado':
+                                badgeClass = 'bg-primary';
+                                estadoTexto = 'Escaneado';
+                                break;
+                            case 'equipaje_cargado':
+                                badgeClass = 'bg-success';
+                                estadoTexto = 'Cargado';
+                                break;
+                            default:
+                                badgeClass = 'bg-secondary';
+                                estadoTexto = valija.estado_actual;
+                        }
+                        
+                        // Formatear tiempo restante
+                        let tiempoRestante = '';
+                        if (valija.tiempo_restante_segundos < 60) {
+                            tiempoRestante = `${valija.tiempo_restante_segundos} seg.`;
+                        } else {
+                            tiempoRestante = `${Math.floor(valija.tiempo_restante_segundos / 60)} min. ${valija.tiempo_restante_segundos % 60} seg.`;
+                        }
+                        
+                        html += `
+                            <tr>
+                                <td><small>${valija.id_valija.substring(0, 8)}...</small></td>
+                                <td><span class="badge ${badgeClass}">${estadoTexto}</span></td>
+                                <td><small>${valija.origen} → ${valija.destino}</small></td>
+                                <td><small>${tiempoRestante}</small></td>
+                            </tr>
+                        `;
+                    });
+                    
+                    $('#tabla-valijas-activas').html(html);
+                },
+                error: function(err) {
+                    console.error('Error al cargar valijas activas:', err);
+                    $('#tabla-valijas-activas').html(
+                        '<tr><td colspan="4" class="text-center text-danger">' +
+                        'Error al cargar valijas activas' +
+                        '</td></tr>'
+                    );
+                }
+            });
+        }
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,740 @@
+{% extends "base.html" %}
+
+{% block head %}
+<style>
+    #map-container {
+        height: 600px;
+        border-radius: 0.75rem;
+        box-shadow: var(--shadow-sm);
+        z-index: 1;
+    }
+    
+    .map-sidebar {
+        max-height: 600px;
+        overflow-y: auto;
+    }
+    
+    .filter-section {
+        background-color: white;
+        border-radius: 0.75rem;
+        box-shadow: var(--shadow-sm);
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+    
+    .info-window {
+        min-width: 250px;
+        max-width: 300px;
+    }
+    
+    .info-window h5 {
+        color: var(--primary-color);
+        margin-bottom: 10px;
+        font-weight: 600;
+    }
+    
+    .map-marker-icon {
+        width: 40px;
+        height: 40px;
+        text-align: center;
+        line-height: 40px;
+        border-radius: 50%;
+        background-color: white;
+        border: 3px solid;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+        cursor: pointer;
+    }
+    
+    .map-controls {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        z-index: 1000;
+        background: white;
+        border-radius: 0.5rem;
+        padding: 0.5rem;
+        box-shadow: var(--shadow-sm);
+    }
+    
+    .map-controls button {
+        margin-bottom: 0.5rem;
+        width: 40px;
+        height: 40px;
+        border-radius: 0.5rem;
+    }
+    
+    .valija-item {
+        cursor: pointer;
+        transition: var(--transition);
+        border-left: 4px solid transparent;
+    }
+    
+    .valija-item:hover {
+        background-color: rgba(13, 110, 253, 0.05);
+        border-left-color: var(--primary-color);
+    }
+    
+    .valija-item.active {
+        background-color: rgba(13, 110, 253, 0.1);
+        border-left-color: var(--primary-color);
+    }
+    
+    @media (max-width: 768px) {
+        #map-container {
+            height: 400px;
+        }
+        
+        .map-sidebar {
+            max-height: 350px;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-12">
+        <h1 class="display-5 mb-4">
+            <i class="fas fa-map-marked-alt me-2"></i>Mapa de Equipajes
+        </h1>
+        <p class="lead">Visualice la ubicación y estado de los equipajes en tiempo real.</p>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-9">
+        <div class="card mb-4">
+            <div class="card-body p-0 position-relative">
+                <div id="map-container"></div>
+                
+                <!-- Controles del mapa -->
+                <div class="map-controls">
+                    <button class="btn btn-light" id="btn-zoom-in" title="Acercar">
+                        <i class="fas fa-plus"></i>
+                    </button>
+                    <button class="btn btn-light" id="btn-zoom-out" title="Alejar">
+                        <i class="fas fa-minus"></i>
+                    </button>
+                    <button class="btn btn-light" id="btn-center" title="Centrar mapa">
+                        <i class="fas fa-crosshairs"></i>
+                    </button>
+                    <button class="btn btn-light" id="btn-refresh-map" title="Actualizar datos">
+                        <i class="fas fa-sync-alt"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-info-circle me-2"></i>Información del Equipaje Seleccionado
+                </h5>
+            </div>
+            <div class="card-body">
+                <div id="info-valija-seleccionada">
+                    <div class="text-center py-4">
+                        <i class="fas fa-hand-pointer fa-2x text-muted mb-3"></i>
+                        <p>Seleccione un equipaje en el mapa o en la lista para ver su información detallada.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-3">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-filter me-2"></i>Filtros
+                </h5>
+            </div>
+            <div class="card-body">
+                <form id="filtro-form">
+                    <div class="mb-3">
+                        <label class="form-label">Estado del Equipaje</label>
+                        <div class="form-check">
+                            <input class="form-check-input filtro-estado" type="checkbox" value="equipaje_escaneado" id="check-escaneado" checked>
+                            <label class="form-check-label" for="check-escaneado">
+                                <i class="fas fa-qrcode text-primary me-1"></i> Escaneado
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input filtro-estado" type="checkbox" value="equipaje_cargado" id="check-cargado" checked>
+                            <label class="form-check-label" for="check-cargado">
+                                <i class="fas fa-plane text-success me-1"></i> Cargado
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input filtro-estado" type="checkbox" value="equipaje_entregado" id="check-entregado" checked>
+                            <label class="form-check-label" for="check-entregado">
+                                <i class="fas fa-check-circle text-warning me-1"></i> Entregado
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="filtro-aeropuerto" class="form-label">Aeropuerto</label>
+                        <select class="form-select" id="filtro-aeropuerto">
+                            <option value="" selected>Todos los aeropuertos</option>
+                            <option value="EZE - Buenos Aires">EZE - Buenos Aires</option>
+                            <option value="AEP - Buenos Aires">AEP - Buenos Aires</option>
+                            <option value="COR - Córdoba">COR - Córdoba</option>
+                            <option value="MDZ - Mendoza">MDZ - Mendoza</option>
+                            <option value="BRC - Bariloche">BRC - Bariloche</option>
+                            <option value="USH - Ushuaia">USH - Ushuaia</option>
+                            <option value="MAD - Madrid">MAD - Madrid</option>
+                            <option value="BCN - Barcelona">BCN - Barcelona</option>
+                            <option value="MIA - Miami">MIA - Miami</option>
+                            <option value="JFK - Nueva York">JFK - Nueva York</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="filtro-busqueda" class="form-label">Búsqueda</label>
+                        <input type="text" class="form-control" id="filtro-busqueda" placeholder="ID de valija...">
+                    </div>
+                    
+                    <div class="d-grid">
+                        <button type="button" class="btn btn-primary" id="btn-aplicar-filtros">
+                            <i class="fas fa-filter me-2"></i>Aplicar Filtros
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-luggage-cart me-2"></i>Equipajes
+                </h5>
+                <span class="badge bg-primary" id="contador-valijas">0</span>
+            </div>
+            <div class="card-body p-0">
+                <div class="map-sidebar">
+                    <div class="list-group list-group-flush" id="lista-valijas-mapa">
+                        <div class="text-center py-4">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Cargando...</span>
+                            </div>
+                            <p class="mt-2">Cargando equipajes...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    $(document).ready(function() {
+        let mapa = null;
+        let marcadores = {};
+        let valijaSeleccionada = null;
+        let datosValijas = [];
+        let filtrosActuales = {
+            estados: ['equipaje_escaneado', 'equipaje_cargado', 'equipaje_entregado'],
+            aeropuerto: '',
+            busqueda: ''
+        };
+        
+        // Inicializar el mapa
+        function inicializarMapa() {
+            // Crear mapa con Leaflet
+            mapa = crearMapa('map-container', {
+                centro: [-34.6037, -58.3816], // Buenos Aires por defecto
+                zoom: 3
+            });
+            
+            // Configurar controles del mapa
+            $('#btn-zoom-in').click(function() {
+                mapa.zoomIn();
+            });
+            
+            $('#btn-zoom-out').click(function() {
+                mapa.zoomOut();
+            });
+            
+            $('#btn-center').click(function() {
+                mapa.setView([-34.6037, -58.3816], 3);
+            });
+            
+            $('#btn-refresh-map').click(function() {
+                cargarDatosValijas();
+            });
+            
+            // Cargar datos de valijas
+            cargarDatosValijas();
+        }
+        
+        // Cargar datos de valijas desde el servidor
+        function cargarDatosValijas() {
+            // Limpiar marcadores actuales
+            limpiarMarcadores();
+            
+            // Mostrar cargando en la lista
+            $('#lista-valijas-mapa').html(`
+                <div class="text-center py-4">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Cargando...</span>
+                    </div>
+                    <p class="mt-2">Cargando equipajes...</p>
+                </div>
+            `);
+            
+            // Obtener datos del servidor
+            $.ajax({
+                url: '/api/valijas',
+                type: 'GET',
+                success: function(data) {
+                    datosValijas = data;
+                    
+                    // Aplicar filtros a los datos
+                    aplicarFiltros();
+                },
+                error: function(err) {
+                    mostrarNotificacion('Error al cargar datos de valijas: ' + (err.statusText || 'Error desconocido'), 'danger');
+                    
+                    $('#lista-valijas-mapa').html(`
+                        <div class="text-center py-4">
+                            <i class="fas fa-exclamation-triangle text-warning fa-2x mb-3"></i>
+                            <p>Error al cargar datos</p>
+                            <button class="btn btn-sm btn-outline-primary mt-2" id="btn-reintentar">
+                                Reintentar
+                            </button>
+                        </div>
+                    `);
+                    
+                    $('#btn-reintentar').click(function() {
+                        cargarDatosValijas();
+                    });
+                }
+            });
+        }
+        
+        // Aplicar filtros a los datos de valijas
+        function aplicarFiltros() {
+            // Obtener valores de los filtros
+            filtrosActuales.estados = [];
+            $('.filtro-estado:checked').each(function() {
+                filtrosActuales.estados.push($(this).val());
+            });
+            
+            filtrosActuales.aeropuerto = $('#filtro-aeropuerto').val();
+            filtrosActuales.busqueda = $('#filtro-busqueda').val().toLowerCase();
+            
+            // Aplicar filtros a los datos
+            const valijasFiltradas = datosValijas.filter(valija => {
+                // Filtrar por estado
+                if (!filtrosActuales.estados.includes(valija.estado)) {
+                    return false;
+                }
+                
+                // Filtrar por aeropuerto
+                if (filtrosActuales.aeropuerto && 
+                    !(valija.origen === filtrosActuales.aeropuerto || 
+                      valija.destino === filtrosActuales.aeropuerto)) {
+                    return false;
+                }
+                
+                // Filtrar por búsqueda
+                if (filtrosActuales.busqueda && 
+                    !valija.id_valija.toLowerCase().includes(filtrosActuales.busqueda)) {
+                    return false;
+                }
+                
+                return true;
+            });
+            
+            // Actualizar contador
+            $('#contador-valijas').text(valijasFiltradas.length);
+            
+            // Mostrar valijas en el mapa y la lista
+            mostrarValijasEnMapa(valijasFiltradas);
+            mostrarValijasEnLista(valijasFiltradas);
+        }
+        
+        // Mostrar valijas en el mapa
+        function mostrarValijasEnMapa(valijas) {
+            // Limpiar marcadores actuales
+            limpiarMarcadores();
+            
+            if (valijas.length === 0) {
+                return;
+            }
+            
+            // Crear marcadores para cada valija
+            valijas.forEach(function(valija) {
+                // Cargar detalles adicionales de la valija
+                $.ajax({
+                    url: '/api/valija/' + valija.id_valija,
+                    type: 'GET',
+                    success: function(eventos) {
+                        if (eventos.length === 0) return;
+                        
+                        // Ordenar eventos por timestamp (más reciente primero)
+                        eventos.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+                        
+                        // Obtener el evento más reciente
+                        const eventoActual = eventos[0];
+                        
+                        // Determinar posición según el origen o destino
+                        let posicion;
+                        
+                        // Si el estado es "entregado", mostrar en el destino, sino en el origen
+                        if (eventoActual.evento === 'equipaje_entregado') {
+                            posicion = obtenerPosicionAeropuerto(eventoActual.destino);
+                        } else {
+                            posicion = obtenerPosicionAeropuerto(eventoActual.origen);
+                        }
+                        
+                        // Crear marcador
+                        crearMarcador(eventoActual, posicion);
+                    }
+                });
+            });
+        }
+        
+        // Crear marcador en el mapa
+        function crearMarcador(evento, posicion) {
+            // Determinar ícono según el estado
+            let iconoClass = '';
+            let colorBorde = '';
+            
+            switch (evento.evento) {
+                case 'equipaje_escaneado':
+                    iconoClass = 'fa-qrcode';
+                    colorBorde = '#0d6efd'; // Azul
+                    break;
+                case 'equipaje_cargado':
+                    iconoClass = 'fa-plane';
+                    colorBorde = '#198754'; // Verde
+                    break;
+                case 'equipaje_entregado':
+                    iconoClass = 'fa-check-circle';
+                    colorBorde = '#fd7e14'; // Naranja
+                    break;
+                default:
+                    iconoClass = 'fa-suitcase-rolling';
+                    colorBorde = '#6c757d'; // Gris
+            }
+            
+            // Crear ícono personalizado
+            const iconoHtml = `<i class="fas ${iconoClass}" style="color: ${colorBorde};"></i>`;
+            const iconoDiv = document.createElement('div');
+            iconoDiv.className = 'map-marker-icon';
+            iconoDiv.style.borderColor = colorBorde;
+            iconoDiv.innerHTML = iconoHtml;
+            
+            // Crear marcador con icono personalizado
+            const icono = L.divIcon({
+                html: iconoDiv,
+                className: 'custom-div-icon',
+                iconSize: [40, 40],
+                iconAnchor: [20, 20]
+            });
+            
+            // Crear el marcador en el mapa
+            const marcador = L.marker(posicion, { icon: icono }).addTo(mapa);
+            
+            // Agregar popup con información
+            marcador.bindPopup(`
+                <div class="info-window">
+                    <h5>Equipaje ${evento.evento.replace('equipaje_', '')}</h5>
+                    <p><strong>ID:</strong> ${evento.id_valija.substring(0, 8)}...</p>
+                    <p><strong>Origen:</strong> ${evento.origen || 'No especificado'}</p>
+                    <p><strong>Destino:</strong> ${evento.destino || 'No especificado'}</p>
+                    <p><strong>Actualizado:</strong> ${new Date(evento.timestamp).toLocaleString()}</p>
+                    <button class="btn btn-sm btn-primary w-100 ver-detalle" 
+                        data-id="${evento.id_valija}">
+                        Ver detalle
+                    </button>
+                </div>
+            `);
+            
+            // Manejar evento de clic en el popup
+            marcador.getPopup().on('add', function() {
+                $('.ver-detalle').click(function() {
+                    const idValija = $(this).data('id');
+                    seleccionarValija(idValija);
+                    marcador.closePopup();
+                });
+            });
+            
+            // Almacenar referencia al marcador
+            marcadores[evento.id_valija] = marcador;
+            
+            // Manejar evento de clic en el marcador
+            marcador.on('click', function() {
+                seleccionarValija(evento.id_valija);
+            });
+        }
+        
+        // Mostrar valijas en la lista lateral
+        function mostrarValijasEnLista(valijas) {
+            if (valijas.length === 0) {
+                $('#lista-valijas-mapa').html(`
+                    <div class="text-center py-4">
+                        <i class="fas fa-search fa-2x text-muted mb-3"></i>
+                        <p>No se encontraron equipajes con los filtros seleccionados</p>
+                    </div>
+                `);
+                return;
+            }
+            
+            let html = '';
+            
+            valijas.forEach(valija => {
+                let iconoClass = '';
+                let estadoClass = '';
+                let estadoTexto = '';
+                
+                switch (valija.estado) {
+                    case 'equipaje_escaneado':
+                        iconoClass = 'fa-qrcode text-primary';
+                        estadoClass = 'bg-primary';
+                        estadoTexto = 'Escaneado';
+                        break;
+                    case 'equipaje_cargado':
+                        iconoClass = 'fa-plane text-success';
+                        estadoClass = 'bg-success';
+                        estadoTexto = 'Cargado';
+                        break;
+                    case 'equipaje_entregado':
+                        iconoClass = 'fa-check-circle text-warning';
+                        estadoClass = 'bg-warning';
+                        estadoTexto = 'Entregado';
+                        break;
+                    default:
+                        iconoClass = 'fa-tag text-secondary';
+                        estadoClass = 'bg-secondary';
+                        estadoTexto = 'Desconocido';
+                }
+                
+                html += `
+                    <div class="list-group-item valija-item" data-id="${valija.id_valija}">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div class="d-flex align-items-center">
+                                <i class="fas ${iconoClass} me-2"></i>
+                                <div>
+                                    <h6 class="mb-0">${valija.id_valija.substring(0, 10)}...</h6>
+                                    <small class="text-muted">${formatearFecha(valija.ultimo_evento)}</small>
+                                </div>
+                            </div>
+                            <span class="badge ${estadoClass}">${estadoTexto}</span>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            $('#lista-valijas-mapa').html(html);
+            
+            // Manejar clic en un item de la lista
+            $('.valija-item').click(function() {
+                const idValija = $(this).data('id');
+                seleccionarValija(idValija);
+            });
+        }
+        
+        // Limpiar todos los marcadores del mapa
+        function limpiarMarcadores() {
+            for (let id in marcadores) {
+                mapa.removeLayer(marcadores[id]);
+            }
+            marcadores = {};
+        }
+        
+        // Seleccionar una valija y mostrar sus detalles
+        function seleccionarValija(idValija) {
+            // Actualizar variable global
+            valijaSeleccionada = idValija;
+            
+            // Actualizar estado visual en la lista
+            $('.valija-item').removeClass('active');
+            $(`.valija-item[data-id="${idValija}"]`).addClass('active');
+            
+            // Mostrar cargando en el panel de información
+            $('#info-valija-seleccionada').html(`
+                <div class="text-center py-3">
+                    <div class="spinner-border text-primary" role="status"></div>
+                    <p class="mt-2">Cargando información...</p>
+                </div>
+            `);
+            
+            // Cargar detalles de la valija
+            $.ajax({
+                url: '/api/valija/' + idValija,
+                type: 'GET',
+                success: function(eventos) {
+                    if (eventos.length === 0) {
+                        $('#info-valija-seleccionada').html(`
+                            <div class="text-center py-4">
+                                <i class="fas fa-exclamation-circle text-warning fa-2x mb-3"></i>
+                                <p>No se encontró información para esta valija</p>
+                            </div>
+                        `);
+                        return;
+                    }
+                    
+                    // Ordenar eventos por timestamp (más reciente primero)
+                    eventos.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+                    
+                    // Obtener el evento más reciente
+                    const eventoActual = eventos[0];
+                    
+                    // Determinar clase y texto según el estado
+                    let statusClass = '';
+                    let statusText = '';
+                    
+                    switch (eventoActual.evento) {
+                        case 'equipaje_escaneado':
+                            statusClass = 'status-escaneado';
+                            statusText = 'Escaneado';
+                            break;
+                        case 'equipaje_cargado':
+                            statusClass = 'status-cargado';
+                            statusText = 'Cargado';
+                            break;
+                        case 'equipaje_entregado':
+                            statusClass = 'status-entregado';
+                            statusText = 'Entregado';
+                            break;
+                        default:
+                            statusClass = 'bg-light text-secondary';
+                            statusText = 'Desconocido';
+                    }
+                    
+                    // Construir HTML con la información
+                    let html = `
+                        <div class="row animate__animated animate__fadeIn">
+                            <div class="col-md-6 mb-3">
+                                <label class="text-muted mb-1">ID de Valija</label>
+                                <h5>${eventoActual.id_valija}</h5>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="text-muted mb-1">Estado</label>
+                                <div><span class="status-badge ${statusClass}">${statusText}</span></div>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="text-muted mb-1">Origen</label>
+                                <h5>${eventoActual.origen || 'No especificado'}</h5>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="text-muted mb-1">Destino</label>
+                                <h5>${eventoActual.destino || 'No especificado'}</h5>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="text-muted mb-1">Peso</label>
+                                <h5>${eventoActual.peso ? eventoActual.peso + ' kg' : 'No especificado'}</h5>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="text-muted mb-1">Última actualización</label>
+                                <h5>${formatearFecha(eventoActual.timestamp)}</h5>
+                            </div>
+                        </div>
+                        
+                        <h5 class="mb-3 mt-2">Historial de eventos</h5>
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Evento</th>
+                                        <th>Fecha y Hora</th>
+                                        <th>Ubicación</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                    `;
+                    
+                    // Agregar cada evento al historial
+                    eventos.forEach(evento => {
+                        let badgeClass = '';
+                        let eventoTexto = '';
+                        
+                        switch (evento.evento) {
+                            case 'equipaje_escaneado':
+                                badgeClass = 'bg-primary';
+                                eventoTexto = 'Escaneado';
+                                break;
+                            case 'equipaje_cargado':
+                                badgeClass = 'bg-success';
+                                eventoTexto = 'Cargado';
+                                break;
+                            case 'equipaje_entregado':
+                                badgeClass = 'bg-warning';
+                                eventoTexto = 'Entregado';
+                                break;
+                            default:
+                                badgeClass = 'bg-secondary';
+                                eventoTexto = evento.evento;
+                        }
+                        
+                        html += `
+                            <tr>
+                                <td><span class="badge ${badgeClass}">${eventoTexto}</span></td>
+                                <td>${formatearFecha(evento.timestamp)}</td>
+                                <td>${evento.evento === 'equipaje_entregado' ? evento.destino : evento.origen}</td>
+                            </tr>
+                        `;
+                    });
+                    
+                    html += `
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        <div class="mt-3">
+                            <a href="/valijas?id=${idValija}" class="btn btn-outline-primary">
+                                <i class="fas fa-external-link-alt me-1"></i> Ver detalles completos
+                            </a>
+                        </div>
+                    `;
+                    
+                    $('#info-valija-seleccionada').html(html);
+                    
+                    // Si hay un marcador para esta valija, centrarlo en el mapa
+                    if (marcadores[idValija]) {
+                        mapa.setView(marcadores[idValija].getLatLng(), 5);
+                    }
+                },
+                error: function(err) {
+                    $('#info-valija-seleccionada').html(`
+                        <div class="text-center py-4">
+                            <i class="fas fa-exclamation-circle text-warning fa-2x mb-3"></i>
+                            <p>Error al cargar la información: ${err.statusText || 'Error desconocido'}</p>
+                            <button class="btn btn-sm btn-outline-primary mt-2" id="btn-reintentar-detalle">
+                                Reintentar
+                            </button>
+                        </div>
+                    `);
+                    
+                    $('#btn-reintentar-detalle').click(function() {
+                        seleccionarValija(idValija);
+                    });
+                }
+            });
+        }
+        
+        // Configurar eventos de los filtros
+        $('#btn-aplicar-filtros').click(function() {
+            aplicarFiltros();
+        });
+        
+        $('.filtro-estado, #filtro-aeropuerto').change(function() {
+            aplicarFiltros();
+        });
+        
+        $('#filtro-busqueda').on('keyup', function(e) {
+            if (e.key === 'Enter') {
+                aplicarFiltros();
+            }
+        });
+        
+        // Inicializar el mapa cuando el DOM esté listo
+        inicializarMapa();
+    });
+</script>
+{% endblock %}

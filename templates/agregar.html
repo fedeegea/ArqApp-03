@@ -1,0 +1,536 @@
+{% extends "base.html" %}
+
+{% block head %}
+<style>
+    .form-section {
+        background-color: white;
+        border-radius: 0.75rem;
+        box-shadow: var(--shadow-sm);
+        padding: 2rem;
+        transition: var(--transition);
+    }
+    
+    .form-section:hover {
+        box-shadow: var(--shadow);
+    }
+    
+    .form-icon {
+        font-size: 3rem;
+        color: rgba(13, 110, 253, 0.1);
+        margin-bottom: 1rem;
+    }
+    
+    .card-header .nav-link {
+        color: var(--secondary-color);
+        border-radius: 0.5rem;
+        padding: 0.5rem 1rem;
+        margin-right: 0.5rem;
+        transition: var(--transition);
+    }
+    
+    .card-header .nav-link.active {
+        background-color: var(--primary-color);
+        color: white;
+    }
+    
+    .tipo-evento-option {
+        padding: 1rem;
+        border: 2px solid rgba(0, 0, 0, 0.1);
+        border-radius: 0.75rem;
+        text-align: center;
+        cursor: pointer;
+        transition: var(--transition);
+    }
+    
+    .tipo-evento-option:hover {
+        border-color: var(--primary-color);
+        background-color: rgba(13, 110, 253, 0.05);
+    }
+    
+    .tipo-evento-option.active {
+        border-color: var(--primary-color);
+        background-color: rgba(13, 110, 253, 0.1);
+    }
+    
+    .tipo-evento-option i {
+        font-size: 2rem;
+        margin-bottom: 0.5rem;
+    }
+    
+    #previewInfo {
+        background-color: rgba(13, 110, 253, 0.05);
+        border-radius: 0.75rem;
+        padding: 1.5rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-12">
+        <h1 class="display-5 mb-4">
+            <i class="fas fa-plus-circle me-2"></i>Agregar Equipaje
+        </h1>
+        <p class="lead">Registre nuevos eventos de equipaje manualmente en el sistema.</p>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card mb-4">
+            <div class="card-header">
+                <ul class="nav nav-tabs card-header-tabs" id="formTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="nuevo-tab" data-bs-toggle="tab" data-bs-target="#nuevo" type="button" role="tab" aria-controls="nuevo" aria-selected="true">
+                            <i class="fas fa-tag me-1"></i> Nuevo Equipaje
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="existente-tab" data-bs-toggle="tab" data-bs-target="#existente" type="button" role="tab" aria-controls="existente" aria-selected="false">
+                            <i class="fas fa-edit me-1"></i> Equipaje Existente
+                        </button>
+                    </li>
+                </ul>
+            </div>
+            <div class="card-body">
+                <div class="tab-content" id="formTabsContent">
+                    <!-- Formulario para nuevo equipaje -->
+                    <div class="tab-pane fade show active" id="nuevo" role="tabpanel" aria-labelledby="nuevo-tab">
+                        <form id="formNuevoEquipaje" action="/api/agregar_equipaje" method="post">
+                            <div class="mb-4">
+                                <h5 class="mb-3">Tipo de Evento</h5>
+                                <div class="row mb-3">
+                                    <div class="col-md-4 mb-3">
+                                        <div class="tipo-evento-option active" data-value="equipaje_escaneado">
+                                            <i class="fas fa-qrcode text-primary"></i>
+                                            <h6>Equipaje Escaneado</h6>
+                                            <small class="text-muted">Registro inicial del equipaje</small>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4 mb-3">
+                                        <div class="tipo-evento-option" data-value="equipaje_cargado">
+                                            <i class="fas fa-plane text-success"></i>
+                                            <h6>Equipaje Cargado</h6>
+                                            <small class="text-muted">Cargado en el avión</small>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4 mb-3">
+                                        <div class="tipo-evento-option" data-value="equipaje_entregado">
+                                            <i class="fas fa-check-circle text-warning"></i>
+                                            <h6>Equipaje Entregado</h6>
+                                            <small class="text-muted">Entregado al pasajero</small>
+                                        </div>
+                                    </div>
+                                </div>
+                                <input type="hidden" id="tipo_evento" name="evento" value="equipaje_escaneado" required>
+                            </div>
+                            
+                            <div class="row mb-4">
+                                <div class="col-md-6 mb-3">
+                                    <label for="origen" class="form-label">Aeropuerto de Origen</label>
+                                    <select class="form-select" id="origen" name="origen" required>
+                                        <option value="" selected disabled>Seleccione un aeropuerto</option>
+                                        <option value="EZE - Buenos Aires">EZE - Buenos Aires</option>
+                                        <option value="AEP - Buenos Aires">AEP - Buenos Aires</option>
+                                        <option value="COR - Córdoba">COR - Córdoba</option>
+                                        <option value="MDZ - Mendoza">MDZ - Mendoza</option>
+                                        <option value="BRC - Bariloche">BRC - Bariloche</option>
+                                        <option value="USH - Ushuaia">USH - Ushuaia</option>
+                                        <option value="MAD - Madrid">MAD - Madrid</option>
+                                        <option value="BCN - Barcelona">BCN - Barcelona</option>
+                                        <option value="MIA - Miami">MIA - Miami</option>
+                                        <option value="JFK - Nueva York">JFK - Nueva York</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="destino" class="form-label">Aeropuerto de Destino</label>
+                                    <select class="form-select" id="destino" name="destino" required>
+                                        <option value="" selected disabled>Seleccione un aeropuerto</option>
+                                        <option value="EZE - Buenos Aires">EZE - Buenos Aires</option>
+                                        <option value="AEP - Buenos Aires">AEP - Buenos Aires</option>
+                                        <option value="COR - Córdoba">COR - Córdoba</option>
+                                        <option value="MDZ - Mendoza">MDZ - Mendoza</option>
+                                        <option value="BRC - Bariloche">BRC - Bariloche</option>
+                                        <option value="USH - Ushuaia">USH - Ushuaia</option>
+                                        <option value="MAD - Madrid">MAD - Madrid</option>
+                                        <option value="BCN - Barcelona">BCN - Barcelona</option>
+                                        <option value="MIA - Miami">MIA - Miami</option>
+                                        <option value="JFK - Nueva York">JFK - Nueva York</option>
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <div class="row mb-4">
+                                <div class="col-md-6 mb-3">
+                                    <label for="peso" class="form-label">Peso (kg)</label>
+                                    <input type="number" class="form-control" id="peso" name="peso" min="0" max="50" step="0.1" required>
+                                    <div class="form-text">Ingrese el peso en kilogramos (0-50 kg)</div>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="timestamp" class="form-label">Fecha y Hora</label>
+                                    <input type="datetime-local" class="form-control" id="timestamp" name="timestamp">
+                                    <div class="form-text">Si no se especifica, se usará la hora actual</div>
+                                </div>
+                            </div>
+                            
+                            <div class="d-grid gap-2">
+                                <button type="submit" class="btn btn-primary btn-lg">
+                                    <i class="fas fa-plus-circle me-2"></i>Agregar Evento de Equipaje
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                    
+                    <!-- Formulario para equipaje existente -->
+                    <div class="tab-pane fade" id="existente" role="tabpanel" aria-labelledby="existente-tab">
+                        <form id="formEquipajeExistente" action="/api/agregar_evento" method="post">
+                            <div class="alert alert-info">
+                                <i class="fas fa-info-circle me-2"></i>
+                                Al agregar un evento a una valija existente, se utilizarán los datos de origen, destino y peso ya registrados.
+                            </div>
+                            
+                            <div class="mb-4">
+                                <label for="id_valija" class="form-label">ID de la Valija</label>
+                                <div class="input-group mb-3">
+                                    <input type="text" class="form-control" id="id_valija" name="id_valija" placeholder="Ingrese el ID completo de la valija" required>
+                                    <button class="btn btn-outline-primary" type="button" id="btn-buscar-valija">
+                                        <i class="fas fa-search"></i>
+                                    </button>
+                                </div>
+                                <div class="form-text">Ingrese el ID completo de la valija a la que desea agregar un evento</div>
+                            </div>
+                            
+                            <div id="infoValija" class="mb-4" style="display: none;">
+                                <div class="alert alert-success">
+                                    <h6 class="mb-2">Información de la valija</h6>
+                                    <div id="valija-info"></div>
+                                </div>
+                            </div>
+                            
+                            <div class="mb-4">
+                                <h5 class="mb-3">Tipo de Evento</h5>
+                                <div class="row mb-3">
+                                    <div class="col-md-4 mb-3">
+                                        <div class="tipo-evento-option active" data-form="existente" data-value="equipaje_escaneado">
+                                            <i class="fas fa-qrcode text-primary"></i>
+                                            <h6>Equipaje Escaneado</h6>
+                                            <small class="text-muted">Registro inicial del equipaje</small>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4 mb-3">
+                                        <div class="tipo-evento-option" data-form="existente" data-value="equipaje_cargado">
+                                            <i class="fas fa-plane text-success"></i>
+                                            <h6>Equipaje Cargado</h6>
+                                            <small class="text-muted">Cargado en el avión</small>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4 mb-3">
+                                        <div class="tipo-evento-option" data-form="existente" data-value="equipaje_entregado">
+                                            <i class="fas fa-check-circle text-warning"></i>
+                                            <h6>Equipaje Entregado</h6>
+                                            <small class="text-muted">Entregado al pasajero</small>
+                                        </div>
+                                    </div>
+                                </div>
+                                <input type="hidden" id="tipo_evento_existente" name="evento" value="equipaje_escaneado" required>
+                            </div>
+                            
+                            <div class="mb-4">
+                                <label for="timestamp_existente" class="form-label">Fecha y Hora</label>
+                                <input type="datetime-local" class="form-control" id="timestamp_existente" name="timestamp">
+                                <div class="form-text">Si no se especifica, se usará la hora actual</div>
+                            </div>
+                            
+                            <div class="d-grid gap-2">
+                                <button type="submit" class="btn btn-primary btn-lg">
+                                    <i class="fas fa-plus-circle me-2"></i>Agregar Evento a Valija Existente
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-4">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-info-circle me-2"></i>Vista Previa
+                </h5>
+            </div>
+            <div class="card-body">
+                <div id="previewInfo">
+                    <h6 class="mb-3">Información del Evento</h6>
+                    <p><strong>Tipo de Evento:</strong> <span id="preview-tipo">Equipaje Escaneado</span></p>
+                    <p><strong>Origen:</strong> <span id="preview-origen">-</span></p>
+                    <p><strong>Destino:</strong> <span id="preview-destino">-</span></p>
+                    <p><strong>Peso:</strong> <span id="preview-peso">-</span> kg</p>
+                    <p><strong>Fecha y Hora:</strong> <span id="preview-timestamp">Actual</span></p>
+                </div>
+                
+                <hr class="my-4">
+                
+                <div class="alert alert-primary">
+                    <i class="fas fa-lightbulb me-2"></i>
+                    <strong>¿Sabías que?</strong> Los eventos de equipaje son registrados en tiempo real y puedes seguir su estado desde la página de seguimiento.
+                </div>
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-question-circle me-2"></i>Ayuda
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="accordion" id="accordionAyuda">
+                    <div class="accordion-item">
+                        <h2 class="accordion-header" id="headingOne">
+                            <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOne" aria-expanded="true" aria-controls="collapseOne">
+                                ¿Cómo registrar un nuevo equipaje?
+                            </button>
+                        </h2>
+                        <div id="collapseOne" class="accordion-collapse collapse show" aria-labelledby="headingOne" data-bs-parent="#accordionAyuda">
+                            <div class="accordion-body">
+                                Para registrar un nuevo equipaje, complete los campos de origen, destino y peso. El sistema generará automáticamente un ID único para el equipaje. Seleccione el tipo de evento (normalmente "Equipaje Escaneado" para nuevos registros) y haga clic en "Agregar Evento de Equipaje".
+                            </div>
+                        </div>
+                    </div>
+                    <div class="accordion-item">
+                        <h2 class="accordion-header" id="headingTwo">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseTwo" aria-expanded="false" aria-controls="collapseTwo">
+                                ¿Cómo agregar eventos a equipajes existentes?
+                            </button>
+                        </h2>
+                        <div id="collapseTwo" class="accordion-collapse collapse" aria-labelledby="headingTwo" data-bs-parent="#accordionAyuda">
+                            <div class="accordion-body">
+                                Para agregar un nuevo evento a un equipaje ya registrado, seleccione la pestaña "Equipaje Existente", ingrese el ID completo de la valija y seleccione el tipo de evento que desea registrar. El sistema mantendrá la información de origen, destino y peso previamente registrada.
+                            </div>
+                        </div>
+                    </div>
+                    <div class="accordion-item">
+                        <h2 class="accordion-header" id="headingThree">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseThree" aria-expanded="false" aria-controls="collapseThree">
+                                ¿Qué significa cada tipo de evento?
+                            </button>
+                        </h2>
+                        <div id="collapseThree" class="accordion-collapse collapse" aria-labelledby="headingThree" data-bs-parent="#accordionAyuda">
+                            <div class="accordion-body">
+                                <ul>
+                                    <li><strong>Equipaje Escaneado:</strong> El equipaje ha sido registrado en el sistema, generalmente en el check-in.</li>
+                                    <li><strong>Equipaje Cargado:</strong> El equipaje ha sido cargado en el avión correspondiente.</li>
+                                    <li><strong>Equipaje Entregado:</strong> El equipaje ha sido entregado al pasajero en el destino.</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    $(document).ready(function() {
+        // Manejar selección de tipo de evento (nuevo equipaje)
+        $('.tipo-evento-option').click(function() {
+            if ($(this).data('form') === 'existente') {
+                // Para el formulario de equipaje existente
+                $('.tipo-evento-option[data-form="existente"]').removeClass('active');
+                $(this).addClass('active');
+                $('#tipo_evento_existente').val($(this).data('value'));
+            } else {
+                // Para el formulario de nuevo equipaje
+                $('.tipo-evento-option').not('[data-form="existente"]').removeClass('active');
+                $(this).addClass('active');
+                $('#tipo_evento').val($(this).data('value'));
+            }
+            
+            // Actualizar vista previa
+            actualizarVistaPrevia();
+        });
+        
+        // Actualizar vista previa al cambiar cualquier campo
+        $('#formNuevoEquipaje select, #formNuevoEquipaje input').on('change input', function() {
+            actualizarVistaPrevia();
+        });
+        
+        // Función para actualizar la vista previa
+        function actualizarVistaPrevia() {
+            // Determinar qué formulario está activo
+            const activeFormId = $('.tab-pane.active').attr('id');
+            
+            if (activeFormId === 'nuevo') {
+                // Obtener valores del formulario de nuevo equipaje
+                const tipoEvento = $('#tipo_evento').val();
+                const origen = $('#origen').val() || '-';
+                const destino = $('#destino').val() || '-';
+                const peso = $('#peso').val() || '-';
+                const timestamp = $('#timestamp').val() 
+                    ? new Date($('#timestamp').val()).toLocaleString() 
+                    : 'Actual';
+                
+                // Actualizar texto en la vista previa
+                $('#preview-tipo').text(tipoEvento.replace('equipaje_', '').charAt(0).toUpperCase() + tipoEvento.replace('equipaje_', '').slice(1));
+                $('#preview-origen').text(origen);
+                $('#preview-destino').text(destino);
+                $('#preview-peso').text(peso);
+                $('#preview-timestamp').text(timestamp);
+            } else {
+                // Para equipaje existente, solo actualizamos el tipo de evento y timestamp
+                const tipoEvento = $('#tipo_evento_existente').val();
+                const timestamp = $('#timestamp_existente').val() 
+                    ? new Date($('#timestamp_existente').val()).toLocaleString() 
+                    : 'Actual';
+                
+                $('#preview-tipo').text(tipoEvento.replace('equipaje_', '').charAt(0).toUpperCase() + tipoEvento.replace('equipaje_', '').slice(1));
+                $('#preview-timestamp').text(timestamp);
+                
+                // Los otros campos se actualizarán cuando se busque la valija
+            }
+        }
+        
+        // Buscar valija existente
+        $('#btn-buscar-valija').click(function() {
+            const idValija = $('#id_valija').val().trim();
+            
+            if (!idValija) {
+                mostrarNotificacion('Por favor, ingrese un ID de valija válido', 'warning');
+                return;
+            }
+            
+            // Mostrar cargando
+            $('#valija-info').html('<div class="text-center py-3"><div class="spinner-border text-primary" role="status"></div><p class="mt-2">Buscando valija...</p></div>');
+            $('#infoValija').show();
+            
+            // Buscar valija en el servidor
+            $.ajax({
+                url: '/api/valija/' + idValija,
+                type: 'GET',
+                success: function(data) {
+                    if (data.length === 0) {
+                        $('#valija-info').html('<div class="alert alert-warning">No se encontró ninguna valija con ese ID</div>');
+                        return;
+                    }
+                    
+                    // Tomar el último evento para mostrar la información
+                    const ultimoEvento = data[data.length - 1];
+                    
+                    $('#valija-info').html(`
+                        <p><strong>ID:</strong> ${ultimoEvento.id_valija}</p>
+                        <p><strong>Origen:</strong> ${ultimoEvento.origen || 'No especificado'}</p>
+                        <p><strong>Destino:</strong> ${ultimoEvento.destino || 'No especificado'}</p>
+                        <p><strong>Peso:</strong> ${ultimoEvento.peso || 'No especificado'} kg</p>
+                        <p><strong>Último evento:</strong> ${ultimoEvento.evento.replace('equipaje_', '').charAt(0).toUpperCase() + ultimoEvento.evento.replace('equipaje_', '').slice(1)} (${new Date(ultimoEvento.timestamp).toLocaleString()})</p>
+                    `);
+                    
+                    // Actualizar vista previa
+                    $('#preview-origen').text(ultimoEvento.origen || '-');
+                    $('#preview-destino').text(ultimoEvento.destino || '-');
+                    $('#preview-peso').text(ultimoEvento.peso || '-');
+                },
+                error: function(err) {
+                    $('#valija-info').html('<div class="alert alert-danger">Error al buscar la valija: ' + (err.statusText || 'Error desconocido') + '</div>');
+                }
+            });
+        });
+        
+        // Manejar envío del formulario de nuevo equipaje
+        $('#formNuevoEquipaje').submit(function(e) {
+            e.preventDefault();
+            
+            if (!validarFormulario('formNuevoEquipaje')) {
+                return false;
+            }
+            
+            // Mostrar cargando
+            mostrarNotificacion('Procesando solicitud...', 'info');
+            
+            // Enviar datos al servidor
+            $.ajax({
+                url: $(this).attr('action'),
+                type: 'POST',
+                data: $(this).serialize(),
+                success: function(response) {
+                    mostrarNotificacion('Equipaje registrado correctamente', 'success');
+                    
+                    // Mostrar modal con la información
+                    mostrarModalSistema('Equipaje Registrado', `
+                        <p>Se ha registrado un nuevo equipaje en el sistema:</p>
+                        <div class="alert alert-success">
+                            <p><strong>ID de Valija:</strong> ${response.id_valija}</p>
+                            <p><strong>Evento:</strong> ${response.evento}</p>
+                            <p><strong>Origen:</strong> ${response.origen}</p>
+                            <p><strong>Destino:</strong> ${response.destino}</p>
+                            <p><strong>Peso:</strong> ${response.peso} kg</p>
+                            <p><strong>Timestamp:</strong> ${new Date(response.timestamp).toLocaleString()}</p>
+                        </div>
+                        <p>Puede seguir este equipaje usando el ID proporcionado en la sección de Seguimiento de Valijas.</p>
+                    `);
+                    
+                    // Resetear formulario
+                    $('#formNuevoEquipaje')[0].reset();
+                    actualizarVistaPrevia();
+                },
+                error: function(err) {
+                    mostrarNotificacion('Error al registrar el equipaje: ' + (err.responseJSON?.error || err.statusText || 'Error desconocido'), 'danger');
+                }
+            });
+        });
+        
+        // Manejar envío del formulario de equipaje existente
+        $('#formEquipajeExistente').submit(function(e) {
+            e.preventDefault();
+            
+            if (!validarFormulario('formEquipajeExistente')) {
+                return false;
+            }
+            
+            if ($('#valija-info').text().trim() === '') {
+                mostrarNotificacion('Por favor, busque una valija válida primero', 'warning');
+                return false;
+            }
+            
+            // Mostrar cargando
+            mostrarNotificacion('Procesando solicitud...', 'info');
+            
+            // Enviar datos al servidor
+            $.ajax({
+                url: $(this).attr('action'),
+                type: 'POST',
+                data: $(this).serialize(),
+                success: function(response) {
+                    mostrarNotificacion('Evento agregado correctamente', 'success');
+                    
+                    // Mostrar modal con la información
+                    mostrarModalSistema('Evento Agregado', `
+                        <p>Se ha agregado un nuevo evento al equipaje existente:</p>
+                        <div class="alert alert-success">
+                            <p><strong>ID de Valija:</strong> ${response.id_valija}</p>
+                            <p><strong>Evento:</strong> ${response.evento}</p>
+                            <p><strong>Timestamp:</strong> ${new Date(response.timestamp).toLocaleString()}</p>
+                        </div>
+                        <p>Puede consultar el historial completo de esta valija en la sección de Seguimiento de Valijas.</p>
+                    `);
+                    
+                    // Resetear formulario
+                    $('#formEquipajeExistente')[0].reset();
+                    $('#infoValija').hide();
+                    actualizarVistaPrevia();
+                },
+                error: function(err) {
+                    mostrarNotificacion('Error al agregar el evento: ' + (err.responseJSON?.error || err.statusText || 'Error desconocido'), 'danger');
+                }
+            });
+        });
+        
+        // Inicializar vista previa
+        actualizarVistaPrevia();
+    });
+</script>
+{% endblock %}

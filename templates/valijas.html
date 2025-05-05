@@ -1,0 +1,529 @@
+{% extends "base.html" %}
+
+{% block head %}
+<style>
+    .timeline {
+        position: relative;
+        padding-left: 30px;
+        margin-left: 10px;
+        border-left: 2px solid #007bff;
+    }
+    
+    .timeline-item {
+        position: relative;
+        margin-bottom: 30px;
+    }
+    
+    .timeline-item::before {
+        content: '';
+        position: absolute;
+        left: -36px;
+        top: 0;
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        background-color: white;
+        border: 2px solid #007bff;
+    }
+    
+    .timeline-item.active::before {
+        background-color: #007bff;
+    }
+    
+    .timeline-badge {
+        position: absolute;
+        left: -50px;
+        width: 42px;
+        height: 42px;
+        border-radius: 50%;
+        text-align: center;
+        color: white;
+        padding: 10px 0;
+        font-size: 18px;
+        background-color: #007bff;
+        top: -12px;
+        border: 4px solid white;
+        box-shadow: 0 0 0 1px #007bff;
+    }
+    
+    .timeline-title {
+        margin-bottom: 5px;
+        font-weight: bold;
+    }
+    
+    .timeline-date {
+        font-size: 0.85rem;
+        color: #6c757d;
+    }
+    
+    .status-badge {
+        padding: 8px 16px;
+        border-radius: 20px;
+        font-weight: 500;
+    }
+    
+    .status-escaneado {
+        background-color: #e3f2fd;
+        color: #0d6efd;
+    }
+    
+    .status-cargado {
+        background-color: #e8f5e9;
+        color: #198754;
+    }
+    
+    .status-entregado {
+        background-color: #fff8e1;
+        color: #fd7e14;
+    }
+    
+    .card-valija {
+        transition: all 0.3s;
+        border-radius: 10px;
+        overflow: hidden;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+    }
+    
+    .card-valija:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 20px rgba(0, 0, 0, 0.15);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <h1 class="display-5 mb-4">
+            <i class="fas fa-luggage-cart me-2"></i>Seguimiento de Valijas
+        </h1>
+        <p class="lead">Consulta el estado e historial de las valijas en el sistema.</p>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-5 mb-4">
+        <!-- Búsqueda y listado de valijas -->
+        <div class="card card-valija mb-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-search me-2"></i>Buscar Valija
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="input-group mb-3">
+                    <input type="text" class="form-control" id="buscar-valija" placeholder="ID de valija o texto parcial...">
+                    <button class="btn btn-primary" type="button" id="btn-buscar">
+                        <i class="fas fa-search"></i>
+                    </button>
+                </div>
+                <div class="form-text">
+                    Puedes buscar por ID completo o parte del ID de la valija.
+                </div>
+            </div>
+        </div>
+        
+        <div class="card card-valija">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-list me-2"></i>Valijas Recientes
+                </h5>
+                <button class="btn btn-sm btn-outline-primary" id="refresh-valijas">
+                    <i class="fas fa-sync-alt"></i>
+                </button>
+            </div>
+            <div class="card-body p-0">
+                <div class="list-group list-group-flush" id="lista-valijas">
+                    <div class="list-group-item text-center py-4">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Cargando...</span>
+                        </div>
+                        <p class="mt-2">Cargando valijas...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-7 mb-4">
+        <!-- Detalle de valija seleccionada -->
+        <div class="card card-valija" id="detalle-container">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-info-circle me-2"></i>Detalle de Valija
+                </h5>
+            </div>
+            <div class="card-body">
+                <div id="sin-seleccion" class="text-center py-5">
+                    <i class="fas fa-luggage-cart fa-4x text-muted mb-3"></i>
+                    <h4>Selecciona una valija</h4>
+                    <p class="text-muted">Haz clic en una valija de la lista para ver su detalle e historial</p>
+                </div>
+                
+                <div id="detalle-valija" style="display: none;">
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="text-muted mb-1">ID de Valija</label>
+                                <h5 id="valija-id">--</h5>
+                            </div>
+                            <div class="mb-3">
+                                <label class="text-muted mb-1">Estado Actual</label>
+                                <div>
+                                    <span class="status-badge" id="valija-estado">--</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="text-muted mb-1">Origen</label>
+                                <h5 id="valija-origen">--</h5>
+                            </div>
+                            <div class="mb-3">
+                                <label class="text-muted mb-1">Destino</label>
+                                <h5 id="valija-destino">--</h5>
+                            </div>
+                            <div class="mb-3">
+                                <label class="text-muted mb-1">Peso</label>
+                                <h5 id="valija-peso">--</h5>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-4">
+                        <h5 class="mb-3">
+                            <i class="fas fa-history me-2"></i>Historial de la Valija
+                        </h5>
+                        <div class="timeline" id="timeline-historial">
+                            <div class="text-center py-3">
+                                <div class="spinner-border text-primary" role="status">
+                                    <span class="visually-hidden">Cargando...</span>
+                                </div>
+                                <p class="mt-2">Cargando historial...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Variables globales
+    let valijaSeleccionada = null;
+    
+    // Función para formatear la fecha
+    function formatDateTime(dateString) {
+        const date = new Date(dateString);
+        return date.toLocaleString();
+    }
+    
+    // Función para cargar el listado de valijas
+    function cargarValijas() {
+        $.ajax({
+            url: '/api/valijas',
+            type: 'GET',
+            success: function(valijas) {
+                mostrarListadoValijas(valijas);
+            },
+            error: function(err) {
+                console.error('Error al cargar valijas:', err);
+                $('#lista-valijas').html(`
+                    <div class="list-group-item text-center py-4">
+                        <i class="fas fa-exclamation-triangle text-warning mb-3" style="font-size: 2rem;"></i>
+                        <p>Error al cargar valijas: ${err.statusText || 'Error desconocido'}</p>
+                        <button class="btn btn-sm btn-outline-primary mt-2" id="reintentar-valijas">
+                            Reintentar
+                        </button>
+                    </div>
+                `);
+                
+                $('#reintentar-valijas').click(function() {
+                    cargarValijas();
+                });
+            }
+        });
+    }
+    
+    // Función para mostrar el listado de valijas
+    function mostrarListadoValijas(valijas) {
+        if (valijas.length === 0) {
+            $('#lista-valijas').html(`
+                <div class="list-group-item text-center py-4">
+                    <i class="fas fa-box-open fa-2x text-muted mb-3"></i>
+                    <p class="mb-0">No hay valijas registradas</p>
+                </div>
+            `);
+            return;
+        }
+        
+        let html = '';
+        
+        valijas.forEach(valija => {
+            let iconClass = '';
+            let statusClass = '';
+            
+            switch (valija.estado) {
+                case 'equipaje_escaneado':
+                    iconClass = 'fa-qrcode';
+                    statusClass = 'text-primary';
+                    break;
+                case 'equipaje_cargado':
+                    iconClass = 'fa-plane';
+                    statusClass = 'text-success';
+                    break;
+                case 'equipaje_entregado':
+                    iconClass = 'fa-check-circle';
+                    statusClass = 'text-warning';
+                    break;
+                default:
+                    iconClass = 'fa-tag';
+                    statusClass = 'text-secondary';
+            }
+            
+            const fechaFormat = formatDateTime(valija.ultimo_evento);
+            
+            html += `
+                <a href="#" class="list-group-item list-group-item-action valija-item" data-id="${valija.id_valija}">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <div class="d-flex align-items-center">
+                                <i class="fas ${iconClass} ${statusClass} me-3" style="font-size: 1.2rem;"></i>
+                                <div>
+                                    <h6 class="mb-1">${valija.id_valija.substring(0, 10)}...</h6>
+                                    <small class="text-muted">${fechaFormat}</small>
+                                </div>
+                            </div>
+                        </div>
+                        <span class="badge rounded-pill ${valija.estado === 'equipaje_entregado' ? 'bg-success' : 'bg-primary'}">
+                            ${valija.estado.replace('equipaje_', '')}
+                        </span>
+                    </div>
+                </a>
+            `;
+        });
+        
+        $('#lista-valijas').html(html);
+        
+        // Asignar evento click a las valijas
+        $('.valija-item').click(function(e) {
+            e.preventDefault();
+            
+            // Quitar selección anterior
+            $('.valija-item').removeClass('active');
+            
+            // Marcar como seleccionada
+            $(this).addClass('active');
+            
+            // Obtener ID de la valija
+            const idValija = $(this).data('id');
+            
+            // Cargar detalle de la valija
+            cargarDetalleValija(idValija);
+        });
+        
+        // Si hay una valija en la URL, seleccionarla automáticamente
+        const urlParams = new URLSearchParams(window.location.search);
+        const idValija = urlParams.get('id');
+        
+        if (idValija) {
+            const valijaItem = $(`.valija-item[data-id="${idValija}"]`);
+            if (valijaItem.length > 0) {
+                valijaItem.trigger('click');
+            } else {
+                // Si la valija no está en la lista, cargarla directamente
+                cargarDetalleValija(idValija);
+            }
+        }
+    }
+    
+    // Función para cargar el detalle de una valija
+    function cargarDetalleValija(idValija) {
+        valijaSeleccionada = idValija;
+        
+        // Mostrar spinner mientras carga
+        $('#sin-seleccion').hide();
+        $('#detalle-valija').show();
+        $('#timeline-historial').html(`
+            <div class="text-center py-3">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Cargando...</span>
+                </div>
+                <p class="mt-2">Cargando historial...</p>
+            </div>
+        `);
+        
+        // Actualizar la URL sin recargar la página
+        const newUrl = window.location.pathname + '?id=' + idValija;
+        window.history.replaceState({}, '', newUrl);
+        
+        // Cargar datos de la valija
+        $.ajax({
+            url: '/api/valija/' + idValija,
+            type: 'GET',
+            success: function(eventos) {
+                mostrarDetalleValija(idValija, eventos);
+            },
+            error: function(err) {
+                console.error('Error al cargar detalle de valija:', err);
+                $('#timeline-historial').html(`
+                    <div class="text-center py-3">
+                        <i class="fas fa-exclamation-triangle text-warning mb-3" style="font-size: 2rem;"></i>
+                        <p>Error al cargar historial: ${err.statusText || 'Error desconocido'}</p>
+                        <button class="btn btn-sm btn-outline-primary mt-2" id="reintentar-historial">
+                            Reintentar
+                        </button>
+                    </div>
+                `);
+                
+                $('#reintentar-historial').click(function() {
+                    cargarDetalleValija(idValija);
+                });
+            }
+        });
+    }
+    
+    // Función para mostrar el detalle de una valija
+    function mostrarDetalleValija(idValija, eventos) {
+        if (eventos.length === 0) {
+            $('#timeline-historial').html(`
+                <div class="text-center py-4">
+                    <i class="fas fa-exclamation-circle text-warning fa-2x mb-3"></i>
+                    <p>No se encontró historial para esta valija</p>
+                </div>
+            `);
+            return;
+        }
+        
+        // Ordenar eventos por timestamp (más reciente primero)
+        eventos.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+        
+        // Mostrar detalles de la valija (usando el evento más reciente)
+        const ultimoEvento = eventos[0];
+        $('#valija-id').text(idValija);
+        $('#valija-origen').text(ultimoEvento.origen || 'No especificado');
+        $('#valija-destino').text(ultimoEvento.destino || 'No especificado');
+        $('#valija-peso').text(ultimoEvento.peso ? ultimoEvento.peso + ' kg' : 'No especificado');
+        
+        // Determinar el estado actual y aplicar estilo
+        const estadoActual = ultimoEvento.evento;
+        let estadoTexto = estadoActual.replace('equipaje_', '');
+        let estadoClase = '';
+        
+        switch (estadoActual) {
+            case 'equipaje_escaneado':
+                estadoClase = 'status-escaneado';
+                estadoTexto = 'Escaneado';
+                break;
+            case 'equipaje_cargado':
+                estadoClase = 'status-cargado';
+                estadoTexto = 'Cargado';
+                break;
+            case 'equipaje_entregado':
+                estadoClase = 'status-entregado';
+                estadoTexto = 'Entregado';
+                break;
+        }
+        
+        $('#valija-estado').text(estadoTexto).attr('class', 'status-badge ' + estadoClase);
+        
+        // Generar timeline del historial
+        let timelineHtml = '';
+        
+        // Ordenar eventos por timestamp (más antiguo primero para la línea de tiempo)
+        eventos.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+        
+        eventos.forEach((evento, index) => {
+            let iconClass = '';
+            let badgeClass = 'bg-secondary';
+            let itemClass = 'timeline-item';
+            
+            if (index === eventos.length - 1) {
+                itemClass += ' active'; // El último evento (más reciente) es el activo
+            }
+            
+            switch (evento.evento) {
+                case 'equipaje_escaneado':
+                    iconClass = 'fa-qrcode';
+                    badgeClass = 'bg-primary';
+                    break;
+                case 'equipaje_cargado':
+                    iconClass = 'fa-plane';
+                    badgeClass = 'bg-success';
+                    break;
+                case 'equipaje_entregado':
+                    iconClass = 'fa-check-circle';
+                    badgeClass = 'bg-warning';
+                    break;
+            }
+            
+            const eventoTexto = evento.evento.replace('equipaje_', '');
+            const fechaFormat = formatDateTime(evento.timestamp);
+            
+            timelineHtml += `
+                <div class="${itemClass}">
+                    <div class="timeline-badge ${badgeClass}">
+                        <i class="fas ${iconClass}"></i>
+                    </div>
+                    <div class="timeline-content">
+                        <h5 class="timeline-title text-capitalize">${eventoTexto}</h5>
+                        <p class="timeline-date">${fechaFormat}</p>
+                        <p>
+                            Origen: ${evento.origen || 'No especificado'} | 
+                            Destino: ${evento.destino || 'No especificado'} | 
+                            Peso: ${evento.peso ? evento.peso + ' kg' : 'No especificado'}
+                        </p>
+                    </div>
+                </div>
+            `;
+        });
+        
+        $('#timeline-historial').html(timelineHtml);
+    }
+    
+    // Inicializar la página
+    $(document).ready(function() {
+        // Cargar listado de valijas
+        cargarValijas();
+        
+        // Configurar botón de actualización
+        $('#refresh-valijas').click(function() {
+            cargarValijas();
+        });
+        
+        // Configurar búsqueda
+        $('#btn-buscar').click(function() {
+            const textoBusqueda = $('#buscar-valija').val().trim();
+            
+            if (textoBusqueda === '') {
+                return;
+            }
+            
+            // Si es un ID completo, cargar directamente el detalle
+            if (textoBusqueda.length > 30) {
+                cargarDetalleValija(textoBusqueda);
+            } else {
+                // Sino, filtrar el listado
+                $('.valija-item').each(function() {
+                    const idValija = $(this).data('id');
+                    if (idValija.toLowerCase().includes(textoBusqueda.toLowerCase())) {
+                        $(this).show();
+                    } else {
+                        $(this).hide();
+                    }
+                });
+            }
+        });
+        
+        // Permitir búsqueda con Enter
+        $('#buscar-valija').keypress(function(e) {
+            if (e.which === 13) {
+                $('#btn-buscar').click();
+            }
+        });
+    });
+</script>
+{% endblock %}
