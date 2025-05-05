@@ -1,20 +1,24 @@
 """
-Este archivo configura la aplicación Flask para PythonAnywhere
+Archivo WSGI para PythonAnywhere - Sistema de Gestión de Equipajes
+Este archivo debe ser copiado en /var/www/fedeegea_pythonanywhere_com_wsgi.py
 """
 
 import sys
 import os
 
-# Agrega el directorio del proyecto al path de Python
+# Agregar el directorio del proyecto al path
 path = '/home/fedeegea/ArqApp-03'
 if path not in sys.path:
     sys.path.insert(0, path)
 
-# Importa la aplicación Flask desde app.py
+# Importar la aplicación Flask
 from app import app as application
 
-# Asegúrate que la aplicación no se ejecuta en modo debug en producción
+# Configurar para producción
 application.config['DEBUG'] = False
 
-# Variables de entorno adicionales si son necesarias
-os.environ['FLASK_ENV'] = 'production'
+# Para activar el simulador automático, descomenta la siguiente línea:
+os.environ['START_SIMULATOR'] = 'True'
+
+# Mensaje de inicialización en el log
+print("Aplicación de Sistema de Gestión de Equipajes inicializada correctamente", file=sys.stderr)
