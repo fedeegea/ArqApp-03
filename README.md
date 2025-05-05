@@ -2,7 +2,7 @@
 
 Un sistema web responsivo para la gestión y seguimiento de equipajes en tiempo real para aeropuertos y aerolíneas.
 
-![Sistema de Gestión de Equipajes](https://via.placeholder.com/800x400?text=Sistema+de+Gesti%C3%B3n+de+Equipajes)
+![Sistema de Gestión de Equipajes](https://fedeegea.pythonanywhere.com/)
 
 ## Características
 
@@ -156,12 +156,8 @@ Las contribuciones son bienvenidas! Para contribuir:
 4. Sube tus cambios a tu repositorio (`git push origin feature/nueva-funcion`).
 5. Abre un Pull Request.
 
-## Licencia
-
-Este proyecto está licenciado bajo la licencia MIT - ver el archivo [LICENSE](LICENSE) para más detalles.
-
 ## Contacto
 
 Para preguntas o soporte, por favor contacta a través de:
-- Email: tu-email@ejemplo.com
-- GitHub: [tu-usuario](https://github.com/tu-usuario)
+- Email: fegea@uade.edu.ar
+- GitHub: [tu-usuario](https://github.com/fedeegea)
