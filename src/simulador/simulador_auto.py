@@ -7,87 +7,40 @@ import threading
 import time
 import random
 import uuid
-import sqlite3
 import logging
 from datetime import datetime, timedelta
 import os
+import sys
+
+# Ajustar el path para las importaciones
+sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+
+# Importar componentes centralizados
+from src.core.config import Config, get_datetime_argentina
+from src.core.db_service import insertar_evento, obtener_valijas_incompletas, inicializar_db
 
 # Configuración de logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
 logger = logging.getLogger('simulador-auto')
-
-# Detectar si estamos en PythonAnywhere
-ON_PYTHONANYWHERE = 'PYTHONANYWHERE_DOMAIN' in os.environ or os.path.exists('/var/www')
-
-# Configuración
-if ON_PYTHONANYWHERE:
-    base_dir = '/home/fedeegea/ArqApp-03'
-    DB_PATH = os.path.join(base_dir, 'equipajes.db')
-    logger.info(f"Detectado entorno PythonAnywhere. Base dir: {base_dir}, DB_PATH: {DB_PATH}")
-else:
-    DB_PATH = 'equipajes.db'
-
-INTERVALO_GENERACION = 30  # Generar nuevo evento cada X segundos (más lento en producción)
-MAX_VALIJAS_ACTIVAS = 10   # Menos valijas activas en producción para reducir la carga
-
-# Lista de aeropuertos disponibles
-AEROPUERTOS = [
-    'EZE - Buenos Aires', 'AEP - Buenos Aires', 'COR - Córdoba', 
-    'MDZ - Mendoza', 'BRC - Bariloche', 'USH - Ushuaia',
-    'MAD - Madrid', 'BCN - Barcelona', 'MIA - Miami', 'JFK - Nueva York'
-]
 
 # Estados de seguimiento de las valijas
 valijas_activas = {}  # Diccionario para mantener el estado de las valijas activas
 
-def obtener_conexion_db():
-    """Establece una conexión con la base de datos SQLite."""
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-    return conn
-
-def insertar_evento(id_valija, evento, origen, destino, peso, timestamp=None):
-    """Inserta un evento de equipaje en la base de datos."""
-    if timestamp is None:
-        timestamp = datetime.now().isoformat()
-        
-    try:
-        conn = obtener_conexion_db()
-        conn.execute(
-            '''
-            INSERT INTO eventos_equipaje 
-            (id_valija, evento, timestamp, origen, destino, peso)
-            VALUES (?, ?, ?, ?, ?, ?)
-            ''',
-            (id_valija, evento, timestamp, origen, destino, peso)
-        )
-        conn.commit()
-        conn.close()
-        logger.info(f"Evento insertado: {evento} para valija {id_valija}")
-        return True
-    except Exception as e:
-        logger.error(f"Error al insertar evento: {e}")
-        return False
-
 def generar_nuevo_equipaje():
     """Genera un nuevo equipaje con evento inicial (escaneado)."""
     id_valija = str(uuid.uuid4())
-    origen = random.choice(AEROPUERTOS)
+    origen = random.choice(Config.AEROPUERTOS)
     
     # Asegurar que destino sea diferente al origen
-    destinos_posibles = [a for a in AEROPUERTOS if a != origen]
+    destinos_posibles = [a for a in Config.AEROPUERTOS if a != origen]
     destino = random.choice(destinos_posibles)
     
     peso = round(random.uniform(5, 30), 1)  # Peso entre 5 y 30 kg
     
-    # Insertar evento de escaneado
+    # Insertar evento de escaneado usando el servicio de base de datos
     insertar_evento(id_valija, 'equipaje_escaneado', origen, destino, peso)
     
     # Agregar a valijas activas con tiempo estimado para próximo evento
-    tiempo_proxima_accion = datetime.now() + timedelta(seconds=random.randint(30, 120))
+    tiempo_proxima_accion = get_datetime_argentina() + timedelta(seconds=random.randint(30, 120))
     valijas_activas[id_valija] = {
         'id': id_valija,
         'origen': origen,
@@ -107,7 +60,7 @@ def procesar_equipajes_activos():
     # Verificar cada valija activa
     for id_valija, info in valijas_activas.items():
         # Si es hora de la próxima acción
-        if datetime.now() >= info['tiempo_proxima_accion']:
+        if get_datetime_argentina() >= info['tiempo_proxima_accion']:
             estado_actual = info['estado_actual']
             
             # Determinar próximo estado según el estado actual
@@ -118,7 +71,7 @@ def procesar_equipajes_activos():
                 
                 # Actualizar estado y programar próxima acción
                 info['estado_actual'] = 'equipaje_cargado'
-                info['tiempo_proxima_accion'] = datetime.now() + timedelta(
+                info['tiempo_proxima_accion'] = get_datetime_argentina() + timedelta(
                     seconds=random.randint(60, 180))
                 
             elif estado_actual == 'equipaje_cargado':
@@ -137,23 +90,8 @@ def procesar_equipajes_activos():
 def cargar_estado_inicial():
     """Carga el estado de valijas existentes en la base de datos."""
     try:
-        conn = obtener_conexion_db()
-        
-        # Obtener valijas que no han completado su ciclo (no tienen evento de entrega)
-        valijas_incompletas = conn.execute('''
-            SELECT e1.id_valija, e1.evento, e1.origen, e1.destino, e1.peso, e1.timestamp
-            FROM eventos_equipaje e1
-            JOIN (
-                SELECT id_valija, MAX(timestamp) as last_timestamp
-                FROM eventos_equipaje
-                GROUP BY id_valija
-            ) e2 ON e1.id_valija = e2.id_valija AND e1.timestamp = e2.last_timestamp
-            WHERE e1.evento != 'equipaje_entregado'
-            ORDER BY e1.timestamp DESC
-            LIMIT 10
-        ''').fetchall()
-        
-        conn.close()
+        # Obtener valijas que no han completado su ciclo usando el servicio de base de datos
+        valijas_incompletas = obtener_valijas_incompletas()
         
         # Agregar valijas incompletas al seguimiento
         for valija in valijas_incompletas:
@@ -164,7 +102,7 @@ def cargar_estado_inicial():
                 continue
                 
             # Agregar a valijas activas
-            tiempo_proxima_accion = datetime.now() + timedelta(seconds=random.randint(30, 120))
+            tiempo_proxima_accion = get_datetime_argentina() + timedelta(seconds=random.randint(30, 120))
             valijas_activas[id_valija] = {
                 'id': id_valija,
                 'origen': valija['origen'],
@@ -186,7 +124,7 @@ def simulador_eventos():
     cargar_estado_inicial()
     
     # Variable para controlar cuándo generar nueva valija
-    ultima_generacion = datetime.now() - timedelta(seconds=INTERVALO_GENERACION)  # Generar una al inicio
+    ultima_generacion = get_datetime_argentina() - timedelta(seconds=Config.INTERVALO_GENERACION)
     
     try:
         while True:
@@ -194,10 +132,10 @@ def simulador_eventos():
             procesar_equipajes_activos()
             
             # Generar nueva valija si es tiempo y no excedemos el límite
-            if (datetime.now() - ultima_generacion).total_seconds() >= INTERVALO_GENERACION and \
-               len(valijas_activas) < MAX_VALIJAS_ACTIVAS:
+            if (get_datetime_argentina() - ultima_generacion).total_seconds() >= Config.INTERVALO_GENERACION and \
+               len(valijas_activas) < Config.MAX_VALIJAS_ACTIVAS:
                 generar_nuevo_equipaje()
-                ultima_generacion = datetime.now()
+                ultima_generacion = get_datetime_argentina()
                 logger.info(f"Valijas activas: {len(valijas_activas)}")
             
             # Breve pausa para no saturar la CPU
@@ -208,32 +146,19 @@ def simulador_eventos():
     finally:
         logger.info("Simulador detenido")
 
-# Función para iniciar el simulador en un hilo separado
 def iniciar_simulador():
     """Inicia el simulador en un hilo separado."""
     try:
         # Verificar si la base de datos existe
-        logger.info(f"Verificando si la base de datos existe en: {DB_PATH}")
-        if not os.path.exists(DB_PATH):
-            logger.error(f"La base de datos {DB_PATH} no existe. No se puede iniciar el simulador.")
-            return False
-        else:
-            logger.info(f"Base de datos encontrada en: {DB_PATH}")
-            
-            # Verificar que podemos conectarnos a la base de datos
-            try:
-                conn = obtener_conexion_db()
-                cursor = conn.cursor()
-                cursor.execute("SELECT COUNT(*) FROM eventos_equipaje")
-                count = cursor.fetchone()[0]
-                conn.close()
-                logger.info(f"Conexión a la base de datos exitosa. Hay {count} eventos registrados.")
-            except Exception as db_error:
-                logger.error(f"Error al conectar con la base de datos: {db_error}")
+        logger.info(f"Verificando si la base de datos existe en: {Config.DB_PATH}")
+        if not os.path.exists(Config.DB_PATH):
+            # Intentar crearla
+            if not inicializar_db():
+                logger.error(f"No se pudo inicializar la base de datos. No se puede iniciar el simulador.")
                 return False
         
         # Si estamos en PythonAnywhere, siempre forzar la activación del simulador
-        if ON_PYTHONANYWHERE:
+        if Config.ON_PYTHONANYWHERE:
             # Forzar la variable de entorno a True para asegurar que el simulador se inicie
             os.environ['START_SIMULATOR'] = 'True'
             logger.info("Forzando la activación del simulador en PythonAnywhere")
