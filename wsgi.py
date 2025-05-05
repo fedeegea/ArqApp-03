@@ -1,13 +1,13 @@
 """
-Archivo WSGI para PythonAnywhere - Sistema de Gestión de Equipajes (Versión mejorada)
-Este archivo debe estar ubicado en /var/www/fedeegea_pythonanywhere_com_wsgi.py
+Archivo WSGI para PythonAnywhere - Sistema de Gestión de Equipajes
+Este archivo debe copiarse en /var/www/fedeegea_pythonanywhere_com_wsgi.py
 """
 
 import sys
 import os
 import traceback
 
-# Configuración de logging más detallado
+# Configuración de logging para debug
 print("Iniciando configuración WSGI...", file=sys.stderr)
 
 try:
@@ -17,9 +17,13 @@ try:
         sys.path.insert(0, path)
     print(f"Directorio del proyecto agregado al path: {path}", file=sys.stderr)
 
-    # Verificar que el directorio existe
-    if not os.path.exists(path):
-        print(f"ADVERTENCIA: El directorio {path} no existe!", file=sys.stderr)
+    # Verificar estructura de carpetas
+    for dir_name in ['src', 'static', 'templates', 'data']:
+        dir_path = os.path.join(path, dir_name)
+        if os.path.exists(dir_path):
+            print(f"✓ Directorio {dir_name} encontrado", file=sys.stderr)
+        else:
+            print(f"✗ Directorio {dir_name} NO encontrado", file=sys.stderr)
     
     # Activar el entorno virtual con manejo de errores
     try:
@@ -45,14 +49,10 @@ try:
     except ImportError as e:
         print(f"ERROR CRÍTICO: No se pudo importar la aplicación Flask: {e}", file=sys.stderr)
         print(f"Detalles del error:\n{traceback.format_exc()}", file=sys.stderr)
-        # Re-lanzar la excepción para que PythonAnywhere muestre el error
         raise
 
-    # Configurar para producción
-    application.config['DEBUG'] = False
-    
     # Mensaje de inicialización en el log
-    print("Aplicación de Sistema de Gestión de Equipajes inicializada correctamente", file=sys.stderr)
+    print("Sistema de Gestión de Equipajes inicializado correctamente", file=sys.stderr)
 
 except Exception as e:
     print(f"ERROR CRÍTICO durante la inicialización del WSGI: {e}", file=sys.stderr)
