@@ -211,27 +211,53 @@ def simulador_eventos():
 # Función para iniciar el simulador en un hilo separado
 def iniciar_simulador():
     """Inicia el simulador en un hilo separado."""
-    # Verificar si la base de datos existe
-    if not os.path.exists(DB_PATH):
-        logger.error(f"La base de datos {DB_PATH} no existe. No se puede iniciar el simulador.")
-        return False
-    
-    # Si estamos en PythonAnywhere, verificamos la variable de entorno START_SIMULATOR
-    if ON_PYTHONANYWHERE:
-        start_simulator = os.environ.get('START_SIMULATOR', 'False')
-        logger.info(f"Ejecutando en PythonAnywhere. START_SIMULATOR = {start_simulator}")
-        
-        if start_simulator.lower() != 'true':
-            logger.info("Simulador no activado en PythonAnywhere. Establece START_SIMULATOR=True para activarlo.")
+    try:
+        # Verificar si la base de datos existe
+        logger.info(f"Verificando si la base de datos existe en: {DB_PATH}")
+        if not os.path.exists(DB_PATH):
+            logger.error(f"La base de datos {DB_PATH} no existe. No se puede iniciar el simulador.")
             return False
         else:
-            logger.info("Simulador activado en PythonAnywhere mediante la variable START_SIMULATOR=True")
-    
-    # Crear y arrancar el hilo del simulador
-    hilo_simulador = threading.Thread(target=simulador_eventos, daemon=True)
-    hilo_simulador.start()
-    logger.info("Hilo del simulador iniciado correctamente")
-    return True
+            logger.info(f"Base de datos encontrada en: {DB_PATH}")
+            
+            # Verificar que podemos conectarnos a la base de datos
+            try:
+                conn = obtener_conexion_db()
+                cursor = conn.cursor()
+                cursor.execute("SELECT COUNT(*) FROM eventos_equipaje")
+                count = cursor.fetchone()[0]
+                conn.close()
+                logger.info(f"Conexión a la base de datos exitosa. Hay {count} eventos registrados.")
+            except Exception as db_error:
+                logger.error(f"Error al conectar con la base de datos: {db_error}")
+                return False
+        
+        # Si estamos en PythonAnywhere, verificamos la variable de entorno START_SIMULATOR
+        if ON_PYTHONANYWHERE:
+            start_simulator = os.environ.get('START_SIMULATOR', 'False')
+            logger.info(f"Ejecutando en PythonAnywhere. START_SIMULATOR = {start_simulator}")
+            
+            if start_simulator.lower() != 'true':
+                logger.info("Simulador no activado en PythonAnywhere. Establece START_SIMULATOR=True para activarlo.")
+                return False
+            else:
+                logger.info("Simulador activado en PythonAnywhere mediante la variable START_SIMULATOR=True")
+        
+        # Crear y arrancar el hilo del simulador con más protección
+        try:
+            logger.info("Creando hilo del simulador...")
+            hilo_simulador = threading.Thread(target=simulador_eventos, daemon=True)
+            logger.info("Iniciando hilo del simulador...")
+            hilo_simulador.start()
+            logger.info("Hilo del simulador iniciado correctamente")
+            return True
+        except Exception as thread_error:
+            logger.error(f"Error al iniciar el hilo del simulador: {thread_error}")
+            return False
+            
+    except Exception as e:
+        logger.error(f"Error general al iniciar el simulador: {e}")
+        return False
 
 # Para pruebas independientes
 if __name__ == "__main__":
