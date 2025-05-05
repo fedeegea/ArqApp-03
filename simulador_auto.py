@@ -232,24 +232,28 @@ def iniciar_simulador():
                 logger.error(f"Error al conectar con la base de datos: {db_error}")
                 return False
         
-        # Si estamos en PythonAnywhere, verificamos la variable de entorno START_SIMULATOR
+        # Si estamos en PythonAnywhere, siempre forzar la activación del simulador
         if ON_PYTHONANYWHERE:
-            start_simulator = os.environ.get('START_SIMULATOR', 'False')
-            logger.info(f"Ejecutando en PythonAnywhere. START_SIMULATOR = {start_simulator}")
-            
-            if start_simulator.lower() != 'true':
-                logger.info("Simulador no activado en PythonAnywhere. Establece START_SIMULATOR=True para activarlo.")
-                return False
-            else:
-                logger.info("Simulador activado en PythonAnywhere mediante la variable START_SIMULATOR=True")
+            # Forzar la variable de entorno a True para asegurar que el simulador se inicie
+            os.environ['START_SIMULATOR'] = 'True'
+            logger.info("Forzando la activación del simulador en PythonAnywhere")
         
         # Crear y arrancar el hilo del simulador con más protección
         try:
             logger.info("Creando hilo del simulador...")
-            hilo_simulador = threading.Thread(target=simulador_eventos, daemon=True)
+            # Usar non-daemon thread para evitar que sea terminado automáticamente
+            hilo_simulador = threading.Thread(target=simulador_eventos, daemon=False)
             logger.info("Iniciando hilo del simulador...")
             hilo_simulador.start()
             logger.info("Hilo del simulador iniciado correctamente")
+            
+            # Generar un equipaje inmediatamente para verificar que el simulador está funcionando
+            try:
+                id_valija = generar_nuevo_equipaje()
+                logger.info(f"Equipaje inicial generado con ID: {id_valija}. Total valijas activas: {len(valijas_activas)}")
+            except Exception as e:
+                logger.error(f"Error al generar equipaje inicial: {e}")
+            
             return True
         except Exception as thread_error:
             logger.error(f"Error al iniciar el hilo del simulador: {thread_error}")
