@@ -19,10 +19,18 @@ logging.basicConfig(
 )
 logger = logging.getLogger('simulador-auto')
 
+# Detectar si estamos en PythonAnywhere
+ON_PYTHONANYWHERE = 'PYTHONANYWHERE_DOMAIN' in os.environ
+
 # Configuración
-DB_PATH = 'equipajes.db'
-INTERVALO_GENERACION = 15  # Generar nuevo evento cada X segundos
-MAX_VALIJAS_ACTIVAS = 20  # Número máximo de valijas activas en el sistema
+if ON_PYTHONANYWHERE:
+    base_dir = '/home/fedeegea/ArqApp-03'
+    DB_PATH = os.path.join(base_dir, 'equipajes.db')
+else:
+    DB_PATH = 'equipajes.db'
+
+INTERVALO_GENERACION = 30  # Generar nuevo evento cada X segundos (más lento en producción)
+MAX_VALIJAS_ACTIVAS = 10   # Menos valijas activas en producción para reducir la carga
 
 # Lista de aeropuertos disponibles
 AEROPUERTOS = [
@@ -205,6 +213,12 @@ def iniciar_simulador():
     # Verificar si la base de datos existe
     if not os.path.exists(DB_PATH):
         logger.error(f"La base de datos {DB_PATH} no existe. No se puede iniciar el simulador.")
+        return False
+    
+    # Si estamos en PythonAnywhere y no se ha habilitado explícitamente el simulador,
+    # devolver False para evitar iniciar el simulador
+    if ON_PYTHONANYWHERE and os.environ.get('START_SIMULATOR', 'False') != 'True':
+        logger.info("Ejecutando en PythonAnywhere sin simulador activo. Para activarlo, establece la variable START_SIMULATOR=True")
         return False
     
     # Crear y arrancar el hilo del simulador

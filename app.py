@@ -14,6 +14,7 @@ from datetime import datetime, timedelta
 import pandas as pd
 import uuid
 import os
+import sys
 import simulador_auto  # Importamos el módulo de simulación automática
 
 # Configuración de logging
@@ -26,8 +27,16 @@ logger = logging.getLogger('flask-app')
 # Crear la aplicación Flask
 app = Flask(__name__)
 
+# Detectar si estamos en PythonAnywhere
+ON_PYTHONANYWHERE = 'PYTHONANYWHERE_DOMAIN' in os.environ
+
 # Configuración de la base de datos
-DB_PATH = 'equipajes.db'
+# En PythonAnywhere, usamos una ruta absoluta
+if ON_PYTHONANYWHERE:
+    base_dir = '/home/fedeegea/ArqApp-03'
+    DB_PATH = os.path.join(base_dir, 'equipajes.db')
+else:
+    DB_PATH = 'equipajes.db'
 
 def get_db_connection():
     """
@@ -427,7 +436,8 @@ def not_found_error(error):
 def internal_error(error):
     return render_template('500.html'), 500
 
-if __name__ == '__main__':
+# Solo iniciar el simulador si no estamos en PythonAnywhere o si explícitamente se solicita
+if __name__ == '__main__' or os.environ.get('START_SIMULATOR', 'False') == 'True':
     # Verificar si la base de datos existe, si no, crearla
     if not os.path.exists(DB_PATH):
         try:
@@ -450,13 +460,18 @@ if __name__ == '__main__':
         except Exception as e:
             logger.error(f"Error al crear la base de datos: {e}")
     
-    # Iniciar el simulador automático
-    logger.info("Iniciando simulador automático de equipajes...")
-    simulador_iniciado = simulador_auto.iniciar_simulador()
-    if simulador_iniciado:
-        logger.info("Simulador automático iniciado correctamente")
-    else:
-        logger.warning("No se pudo iniciar el simulador automático")
+    # Importar e iniciar el simulador automático si no estamos en PythonAnywhere
+    # o si explícitamente lo solicitamos
+    try:
+        logger.info("Iniciando simulador automático de equipajes...")
+        simulador_iniciado = simulador_auto.iniciar_simulador()
+        if simulador_iniciado:
+            logger.info("Simulador automático iniciado correctamente")
+        else:
+            logger.warning("No se pudo iniciar el simulador automático")
+    except Exception as e:
+        logger.error(f"Error al iniciar el simulador: {e}")
     
-    # Ejecutar la aplicación en modo debug
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    # Ejecutar la aplicación en modo debug solo en desarrollo local
+    if not ON_PYTHONANYWHERE:
+        app.run(debug=True, host='0.0.0.0', port=5000)
