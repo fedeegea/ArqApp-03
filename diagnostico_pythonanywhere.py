@@ -9,9 +9,9 @@ Ejecutar en la consola de PythonAnywhere para comprobar que todo está correctam
 import os
 import sys
 import sqlite3
-import importlib.util
 import datetime
 import platform
+import subprocess
 
 # Banner
 print("=" * 70)
@@ -97,7 +97,7 @@ if os.path.isfile(db_path):
 else:
     print(f"   - ❌ Base de datos: No existe en {db_path}")
 
-# Verificar módulos requeridos
+# Verificar módulos requeridos usando pip list en lugar de importlib
 print("\n5. DEPENDENCIAS:")
 try:
     with open(os.path.join(directorio_base, 'requirements.txt'), 'r') as f:
@@ -106,21 +106,34 @@ try:
     print(f"   - Total de dependencias en requirements.txt: {len(requirements)}")
     print("   - Verificando instalación:")
     
-    for req in requirements[:5]:  # Mostrar solo las primeras 5 para no saturar
-        req_name = req.split('==')[0] if '==' in req else req
-        try:
-            spec = importlib.util.find_spec(req_name)
-            if spec is not None:
-                print(f"     - ✅ {req_name}: Instalado")
+    # Ejecutar pip list para obtener los paquetes instalados
+    try:
+        result = subprocess.run([sys.executable, '-m', 'pip', 'list', '--format=json'], 
+                                capture_output=True, text=True, check=True)
+        import json
+        installed_packages = {pkg['name'].lower(): pkg['version'] for pkg in json.loads(result.stdout)}
+        
+        for req in requirements:
+            req_name = req.split('==')[0] if '==' in req else req
+            if req_name.lower() in installed_packages:
+                print(f"     - ✅ {req_name}: Instalado (versión {installed_packages[req_name.lower()]})")
             else:
-                print(f"     - ❌ {req_name}: No encontrado")
-        except (ImportError, ModuleNotFoundError):
-            print(f"     - ❌ {req_name}: Error al importar")
+                print(f"     - ❌ {req_name}: No instalado")
+    except (subprocess.SubprocessError, json.JSONDecodeError) as e:
+        print(f"   - ❌ Error al obtener lista de paquetes: {e}")
+        
+        # Plan B: Try to import each package directly
+        for req in requirements:
+            req_name = req.split('==')[0] if '==' in req else req
+            try:
+                # Intentar importar de forma dinámica
+                module = __import__(req_name.lower())
+                print(f"     - ✅ {req_name}: Importado correctamente")
+            except ImportError:
+                print(f"     - ❌ {req_name}: Error al importar")
     
-    if len(requirements) > 5:
-        print(f"     - ... y {len(requirements) - 5} dependencias más")
 except Exception as e:
-    print(f"   - ❌ Error al leer requirements.txt: {e}")
+    print(f"   - ❌ Error al verificar dependencias: {e}")
 
 # Verificar entorno virtual
 print("\n6. ENTORNO VIRTUAL:")
@@ -158,7 +171,8 @@ else:
 print("\n8. IMPORTACIÓN DE MÓDULOS PRINCIPALES:")
 try:
     from flask import Flask
-    print("   - ✅ Flask: Importado correctamente")
+    import flask
+    print(f"   - ✅ Flask: Importado correctamente (versión {flask.__version__})")
 except ImportError:
     print("   - ❌ Flask: Error al importar")
 
@@ -170,7 +184,7 @@ except ImportError:
 
 try:
     import pandas as pd
-    print("   - ✅ pandas: Importado correctamente")
+    print(f"   - ✅ pandas: Importado correctamente (versión {pd.__version__})")
 except ImportError:
     print("   - ❌ pandas: Error al importar")
 
