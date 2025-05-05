@@ -162,4 +162,4 @@ Las contribuciones son bienvenidas! Para contribuir:
 
 Para preguntas o soporte, por favor contacta a través de:
 - Email: fegea@uade.edu.ar
-- GitHub: [tu-usuario](https://github.com/fedeegea)
+- GitHub: [fedeegea](https://github.com/fedeegea)
