@@ -20,12 +20,13 @@ logging.basicConfig(
 logger = logging.getLogger('simulador-auto')
 
 # Detectar si estamos en PythonAnywhere
-ON_PYTHONANYWHERE = 'PYTHONANYWHERE_DOMAIN' in os.environ
+ON_PYTHONANYWHERE = 'PYTHONANYWHERE_DOMAIN' in os.environ or os.path.exists('/var/www')
 
 # Configuración
 if ON_PYTHONANYWHERE:
     base_dir = '/home/fedeegea/ArqApp-03'
     DB_PATH = os.path.join(base_dir, 'equipajes.db')
+    logger.info(f"Detectado entorno PythonAnywhere. Base dir: {base_dir}, DB_PATH: {DB_PATH}")
 else:
     DB_PATH = 'equipajes.db'
 

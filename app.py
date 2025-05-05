@@ -429,6 +429,40 @@ def get_simulador_valijas():
         logger.error(f"Error al obtener valijas activas del simulador: {e}")
         return jsonify({'error': str(e)}), 500
 
+@app.route('/api/simulador/forzar_inicio')
+def forzar_inicio_simulador():
+    """
+    API para forzar el inicio del simulador automático.
+    Útil para iniciar el simulador desde una ruta web.
+    """
+    try:
+        # Forzar la activación del simulador independientemente del entorno
+        os.environ['START_SIMULATOR'] = 'True'
+        logger.info("Forzando inicio del simulador mediante API")
+        
+        # Intentar iniciar el simulador
+        simulador_iniciado = simulador_auto.iniciar_simulador()
+        
+        if simulador_iniciado:
+            return jsonify({
+                'success': True,
+                'mensaje': 'Simulador iniciado correctamente',
+                'timestamp': datetime.now().isoformat()
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': 'No se pudo iniciar el simulador',
+                'timestamp': datetime.now().isoformat()
+            }), 500
+    except Exception as e:
+        logger.error(f"Error al forzar inicio del simulador: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e),
+            'timestamp': datetime.now().isoformat()
+        }), 500
+
 # Manejador de errores para rutas no encontradas
 @app.errorhandler(404)
 def not_found_error(error):
