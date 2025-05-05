@@ -215,11 +215,16 @@ def iniciar_simulador():
         logger.error(f"La base de datos {DB_PATH} no existe. No se puede iniciar el simulador.")
         return False
     
-    # Si estamos en PythonAnywhere y no se ha habilitado explícitamente el simulador,
-    # devolver False para evitar iniciar el simulador
-    if ON_PYTHONANYWHERE and os.environ.get('START_SIMULATOR', 'False') != 'True':
-        logger.info("Ejecutando en PythonAnywhere sin simulador activo. Para activarlo, establece la variable START_SIMULATOR=True")
-        return False
+    # Si estamos en PythonAnywhere, verificamos la variable de entorno START_SIMULATOR
+    if ON_PYTHONANYWHERE:
+        start_simulator = os.environ.get('START_SIMULATOR', 'False')
+        logger.info(f"Ejecutando en PythonAnywhere. START_SIMULATOR = {start_simulator}")
+        
+        if start_simulator.lower() != 'true':
+            logger.info("Simulador no activado en PythonAnywhere. Establece START_SIMULATOR=True para activarlo.")
+            return False
+        else:
+            logger.info("Simulador activado en PythonAnywhere mediante la variable START_SIMULATOR=True")
     
     # Crear y arrancar el hilo del simulador
     hilo_simulador = threading.Thread(target=simulador_eventos, daemon=True)

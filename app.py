@@ -28,13 +28,16 @@ logger = logging.getLogger('flask-app')
 app = Flask(__name__)
 
 # Detectar si estamos en PythonAnywhere
-ON_PYTHONANYWHERE = 'PYTHONANYWHERE_DOMAIN' in os.environ
+ON_PYTHONANYWHERE = 'PYTHONANYWHERE_DOMAIN' in os.environ or os.path.exists('/var/www')
 
 # Configuración de la base de datos
 # En PythonAnywhere, usamos una ruta absoluta
 if ON_PYTHONANYWHERE:
     base_dir = '/home/fedeegea/ArqApp-03'
     DB_PATH = os.path.join(base_dir, 'equipajes.db')
+    # Para debug
+    logger.info(f"Ejecutando en PythonAnywhere. DB_PATH: {DB_PATH}")
+    logger.info(f"START_SIMULATOR está configurado como: {os.environ.get('START_SIMULATOR', 'No configurado')}")
 else:
     DB_PATH = 'equipajes.db'
 
