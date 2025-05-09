@@ -6,8 +6,11 @@ Este módulo proporciona funciones para realizar operaciones CRUD en la base de 
 import sqlite3
 import os
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 import pytz
+
+# Importar la configuración centralizada
+from src.core.config import Config
 
 logger = logging.getLogger('db-service')
 
@@ -19,16 +22,9 @@ def get_datetime_argentina():
     """Retorna el datetime actual en la zona horaria de Argentina"""
     return datetime.now(ZONA_HORARIA)
 
-# Detectar si estamos en PythonAnywhere
-ON_PYTHONANYWHERE = 'PYTHONANYWHERE_DOMAIN' in os.environ or os.path.exists('/var/www')
-
-# Configuración de la base de datos
-if ON_PYTHONANYWHERE:
-    base_dir = '/home/fedeegea/ArqApp-03'
-    DB_PATH = os.path.join(base_dir, 'equipajes.db')
-    logger.info(f"Ejecutando en PythonAnywhere. DB_PATH: {DB_PATH}")
-else:
-    DB_PATH = 'equipajes.db'
+# Usar la configuración centralizada para la ruta de la base de datos
+DB_PATH = Config.DB_PATH
+logger.info(f"Base de datos configurada en: {DB_PATH}")
 
 def get_db_connection():
     """
@@ -37,9 +33,20 @@ def get_db_connection():
     Returns:
         sqlite3.Connection: Objeto de conexión a la base de datos.
     """
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row  # Para obtener los resultados como diccionarios
-    return conn
+    # Verificar si el directorio existe
+    db_dir = os.path.dirname(DB_PATH)
+    if not os.path.exists(db_dir):
+        os.makedirs(db_dir, exist_ok=True)
+        logger.info(f"Creado directorio para la base de datos: {db_dir}")
+    
+    # Conectar a la base de datos única en data/equipajes.db
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        conn.row_factory = sqlite3.Row  # Para obtener los resultados como diccionarios
+        return conn
+    except Exception as e:
+        logger.error(f"Error crítico al conectar a la base de datos {DB_PATH}: {e}")
+        raise
 
 def inicializar_db():
     """
@@ -160,6 +167,7 @@ def obtener_valija(id_valija):
 def obtener_todas_valijas():
     """
     Obtiene la lista de todas las valijas con su estado actual.
+    Garantiza que los campos requeridos nunca sean None para evitar errores en el frontend.
     
     Returns:
         list: Lista de valijas con su estado actual.
@@ -185,9 +193,17 @@ def obtener_todas_valijas():
             '''
         ).fetchall()
         conn.close()
-        
-        # Convertir los objetos Row a diccionarios
-        return [dict(valija) for valija in valijas]
+        # Convertir los objetos Row a diccionarios y limpiar valores None
+        valijas_list = []
+        for valija in valijas:
+            v = dict(valija)
+            v['id_valija'] = v.get('id_valija') or ''
+            v['ultimo_evento'] = v.get('ultimo_evento') or ''
+            v['estado'] = v.get('estado') or 'desconocido'
+            v['origen'] = v.get('origen') or 'No especificado'
+            v['destino'] = v.get('destino') or 'No especificado'
+            valijas_list.append(v)
+        return valijas_list
     except Exception as e:
         logger.error(f"Error al obtener lista de valijas: {e}")
         return []
@@ -199,6 +215,14 @@ def obtener_estadisticas():
     Returns:
         dict: Diccionario con las estadísticas.
     """
+    # Valores por defecto en caso de error
+    resultado = {
+        'por_tipo': [],
+        'ultimas_24h': 0,
+        'valijas_unicas': 0
+    }
+    
+    conn = None
     try:
         conn = get_db_connection()
         
@@ -207,31 +231,47 @@ def obtener_estadisticas():
             'SELECT evento, COUNT(*) as cantidad FROM eventos_equipaje GROUP BY evento'
         ).fetchall()
         
-        # Contar eventos de las últimas 24 horas
-        fecha_limite = (get_datetime_argentina() - datetime.timedelta(hours=24)).isoformat()
-        eventos_recientes = conn.execute(
-            'SELECT COUNT(*) as cantidad FROM eventos_equipaje WHERE timestamp > ?',
-            (fecha_limite,)
-        ).fetchone()
-        
         # Obtener el total de valijas únicas
         valijas_unicas = conn.execute(
             'SELECT COUNT(DISTINCT id_valija) as cantidad FROM eventos_equipaje'
         ).fetchone()
         
-        conn.close()
-        
         # Convertir a formato adecuado para JSON
         tipos = [dict(evento) for evento in eventos_por_tipo]
+        resultado['por_tipo'] = tipos
+        resultado['valijas_unicas'] = valijas_unicas['cantidad'] if valijas_unicas else 0
         
-        return {
-            'por_tipo': tipos,
-            'ultimas_24h': eventos_recientes['cantidad'],
-            'valijas_unicas': valijas_unicas['cantidad']
-        }
+        # Contar eventos de las últimas 24 horas
+        try:
+            # Usamos el datetime actual y restamos 24 horas
+            dt_actual = get_datetime_argentina()
+            dt_limite = dt_actual - timedelta(hours=24)
+            fecha_limite = dt_limite.isoformat()
+            
+            eventos_recientes = conn.execute(
+                'SELECT COUNT(*) as cantidad FROM eventos_equipaje WHERE timestamp > ?',
+                (fecha_limite,)
+            ).fetchone()
+            
+            resultado['ultimas_24h'] = eventos_recientes['cantidad'] if eventos_recientes else 0
+        except Exception as fecha_error:
+            logger.error(f"Error al calcular fecha límite: {fecha_error}")
+            # Si hay un error con la fecha, mantenemos el valor por defecto
+            resultado['ultimas_24h'] = 0
+    
     except Exception as e:
         logger.error(f"Error al obtener estadísticas: {e}")
-        return {'error': str(e)}
+        # Ya tenemos los valores por defecto en resultado
+    
+    finally:
+        # Cerrar la conexión solo si se abrió correctamente
+        if conn:
+            try:
+                conn.close()
+            except Exception as close_error:
+                logger.error(f"Error al cerrar la conexión: {close_error}")
+    
+    return resultado
 
 def obtener_valijas_incompletas(limit=10):
     """

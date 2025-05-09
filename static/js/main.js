@@ -164,6 +164,8 @@ function obtenerColorEstado(estado) {
             return '#198754'; // Verde
         case 'equipaje_entregado':
             return '#fd7e14'; // Naranja
+        case 'equipaje_perdido':
+            return '#dc3545'; // Rojo
         default:
             return '#6c757d'; // Gris
     }

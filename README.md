@@ -1,215 +1,106 @@
 # Sistema de Gestión de Equipajes
 
-Un sistema web responsivo para la gestión y seguimiento de equipajes en tiempo real para aeropuertos y aerolíneas.
+Sistema web para la gestión, seguimiento y visualización de equipajes en tiempo real, con arquitectura orientada a eventos (EDA) usando Kafka.
 
-**🌐 [Acceder al sistema en vivo](https://fedeegea.pythonanywhere.com/)**
+---
 
-![Sistema de Gestión de Equipajes](static/img/dashboard.png)
+## Características principales
+- Dashboard en tiempo real con estadísticas y eventos recientes.
+- Seguimiento detallado e historial de cada equipaje.
+- Visualización de estados y ubicación en mapa interactivo.
+- Registro manual y simulador automático de equipajes.
+- Arquitectura orientada a eventos (EDA) con Kafka para robustez y reportes automáticos.
+- Reporte automático de equipajes perdidos (CSV).
+- Manejo avanzado de errores y reintentos en frontend.
+- Logo institucional y experiencia de usuario mejorada.
 
-## Características
+## Tecnologías
+- **Backend:** Flask (Python)
+- **Frontend:** HTML5, CSS3, JavaScript, Bootstrap 5, Chart.js, Leaflet.js
+- **Base de datos:** SQLite
+- **EDA:** Kafka (KRaft mode, sin Zookeeper), kafka-python
 
-- 📊 **Dashboard en tiempo real**: Visualiza estadísticas y métricas principales de los equipajes en el sistema.
-- 🧳 **Seguimiento de equipajes**: Monitorea el estado actual e historial de cada equipaje.
-- 🗺️ **Visualización en mapa**: Ubica los equipajes en un mapa según su estado y ubicación.
-- ➕ **Registro manual**: Permite agregar equipajes y eventos manualmente.
-- 🤖 **Simulador automático**: Genera y procesa eventos de equipaje de forma automática.
-- 📱 **Diseño responsivo**: Funciona perfectamente en dispositivos móviles y de escritorio.
-- 🌍 **Zona horaria local**: Muestra todas las fechas y horas en la zona horaria de Argentina.
+## Arquitectura orientada a eventos (EDA)
 
-## Tecnologías utilizadas
+- **Productor Kafka:** El backend Flask publica eventos de equipaje en el tópico `eventos_equipaje`.
+- **Consumidor Kafka:** Microservicio Python que detecta equipajes perdidos y genera reportes automáticos en CSV.
+- **Simulador:** Genera equipajes y simula su ciclo de vida, incluyendo pérdidas aleatorias.
 
-- **Backend**: Flask (Python)
-- **Frontend**: HTML5, CSS3, JavaScript, Bootstrap 5
-- **Base de datos**: SQLite
-- **Visualización**: Chart.js, Leaflet.js
-- **Simulación**: Hilos (threading) de Python
-- **Arquitectura**: Modelo-Vista-Controlador (MVC)
+### Flujo de eventos
+1. El backend publica cada cambio de estado de equipaje en Kafka.
+2. El consumidor Kafka mantiene el estado de cada equipaje y detecta pérdidas.
+3. Si un equipaje pasa a "perdido", se genera un reporte automático en CSV.
 
-## Arquitectura del Sistema
-
-El proyecto sigue una arquitectura Modelo-Vista-Controlador (MVC) con:
-
-- **Modelo**: Servicios de base de datos encapsulados en `src/core/db_service.py`.
-- **Vista**: Plantillas HTML en `templates/`.
-- **Controlador**: Rutas API en `src/api/routes.py` y rutas web en `app.py`.
-
-Además, se implementa:
-- **Inyección de dependencias**: Para facilitar el testing y la modularidad.
-- **Separación de responsabilidades**: Cada módulo tiene una única función.
-- **Configuración centralizada**: En `src/core/config.py`.
-
-## Instalación
+## Instalación y ejecución
 
 ### Prerrequisitos
+- Python 3.8+
+- Kafka (modo KRaft, sin Zookeeper)
+- pip
 
-- Python 3.8 o superior
-- pip (gestor de paquetes de Python)
-
-### Pasos de instalación
-
-1. Clona este repositorio:
-
-```bash
-git clone https://github.com/fedeegea/ArqApp-03.git
-cd ArqApp-03
-```
-
-2. Crea un entorno virtual (opcional pero recomendado):
-
-```bash
-python -m venv venv
-# En Windows
-venv\Scripts\activate
-# En MacOS/Linux
-source venv/bin/activate
-```
-
-3. Instala las dependencias:
-
-```bash
-pip install -r requirements.txt
-```
-
-4. La base de datos se inicializa automáticamente al arrancar la aplicación.
-
-## Uso
-
-### Iniciar la aplicación web
-
-Para iniciar la aplicación Flask, simplemente ejecuta:
-
-```bash
-python app.py
-```
-
-La aplicación estará disponible en `http://localhost:5000`
-
-### Funcionalidades principales
-
-1. **Dashboard**: La página principal muestra estadísticas en tiempo real y eventos recientes.
-2. **Seguimiento de Valijas**: Consulta información detallada de equipajes específicos.
-3. **Mapa de Equipajes**: Visualiza la ubicación y estado de los equipajes en un mapa interactivo.
-4. **Agregar Equipajes**: Registra nuevos equipajes o eventos manualmente.
-
-### Simulador automático
-
-El sistema incluye un simulador que genera y procesa equipajes automáticamente:
-
-- Se inicia automáticamente con la aplicación Flask.
-- Genera nuevos equipajes con intervalos configurables (por defecto, cada 30 segundos).
-- Procesa los estados (escaneado → cargado → entregado).
-- Mantiene un número configurable de valijas activas simultáneamente.
-- El estado del simulador se puede monitorear en el dashboard.
-- Se puede forzar el inicio del simulador mediante la API: `/api/simulador/forzar_inicio`.
+### Pasos
+1. Clona el repositorio y entra al directorio:
+   ```bash
+   git clone https://github.com/fedeegea/ArqApp-03.git
+   cd ArqApp-03
+   ```
+2. Instala dependencias:
+   ```bash
+   pip install -r requirements.txt
+   ```
+3. Inicia Kafka (ver README para Windows/KRaft).
+4. Ejecuta la app Flask:
+   ```bash
+   python app.py
+   ```
+5. (En otra terminal) Ejecuta el consumidor Kafka:
+   ```bash
+   python src/eda/consumidor_kafka.py
+   ```
 
 ## Estructura del proyecto
 
-```
-ArqApp-03/
-│
-├── app.py                 # Aplicación principal Flask
-├── wsgi.py                # Punto de entrada para despliegue en PythonAnywhere
-├── requirements.txt       # Dependencias del proyecto
-├── README.md              # Documentación del proyecto
-│
-├── config/                # Archivos de configuración
-│   └── docker-compose.yml # Configuración para despliegue con Docker
-│
-├── data/                  # Datos persistentes
-│   └── equipajes.db       # Base de datos SQLite
-│
-├── docs/                  # Documentación adicional
-│
-├── src/                   # Código fuente principal
-│   ├── api/               # Controladores y rutas API
-│   │   └── routes.py      # Blueprint de Flask para rutas API
-│   ├── core/              # Componentes centrales
-│   │   ├── config.py      # Configuración centralizada
-│   │   └── db_service.py  # Servicios de acceso a datos
-│   └── simulador/         # Componente de simulación
-│       └── simulador_auto.py # Simulador automático de eventos
-│
-├── static/                # Archivos estáticos
-│   ├── css/               # Hojas de estilo
-│   │   └── style.css
-│   ├── img/               # Imágenes y recursos gráficos
-│   │   └── dashboard.png
-│   └── js/                # Scripts de cliente
-│       └── main.js
-│
-├── templates/             # Plantillas HTML (Vistas)
-│   ├── base.html          # Plantilla base
-│   ├── index.html         # Dashboard
-│   ├── valijas.html       # Seguimiento de valijas
-│   ├── mapa.html          # Visualización en mapa
-│   ├── agregar.html       # Registro manual
-│   ├── 404.html           # Página de error 404
-│   └── 500.html           # Página de error 500
-│
-└── utils/                 # Utilidades y scripts auxiliares
-```
+- `app.py`: App principal Flask
+- `src/api/routes.py`: Rutas API REST
+- `src/core/db_service.py`: Acceso a base de datos SQLite
+- `src/eda/productor_kafka.py`: Productor Kafka
+- `src/eda/consumidor_kafka.py`: Consumidor Kafka y reporte de pérdidas
+- `src/simulador/simulador_auto.py`: Simulador automático de equipajes
+- `static/`, `templates/`: Frontend y vistas
+- `data/equipajes.db`: Base de datos SQLite
 
-## Despliegue en producción
+## Uso y funcionalidades
+- Dashboard: Estadísticas y eventos recientes
+- Seguimiento: Consulta de historial y estado de valijas
+- Mapa: Visualización geográfica y filtros avanzados
+- Agregar: Registro manual de equipajes y eventos
+- Simulador: Generación automática de equipajes y estados
+- Reporte CSV: Generación automática al detectar equipaje perdido
 
-### Despliegue en PythonAnywhere
+## Kafka en Windows (KRaft)
+- Descarga Kafka y descomprime.
+- Inicia el broker con:
+  ```bash
+  .\bin\windows\kafka-server-start.bat .\config\kafka-server.properties
+  ```
+- Asegúrate de que el puerto 9092 esté libre y usa IPv4.
 
-Este proyecto está configurado para funcionar en PythonAnywhere. Pasos clave:
+## Solución de problemas
+- Si ves "Error al cargar datos del servidor" en el frontend, revisa:
+  - Conexión a la base de datos
+  - Logs del backend Flask
+  - Estado del broker Kafka
+  - Formato de los datos en la base
+- El frontend ahora es robusto ante datos incompletos y muestra mensajes claros.
 
-1. Sube todos los archivos manteniendo la estructura.
-2. Asegúrate de que el archivo WSGI en PythonAnywhere tenga el contenido correcto.
-3. Configura la variable de entorno `START_SIMULATOR=True` para activar el simulador.
-4. Reinicia la aplicación web desde el panel de control.
-
-### Otras opciones de despliegue
-
-Para desplegar esta aplicación en otros entornos de producción:
-
-1. Usar un servidor WSGI como Gunicorn:
-   ```bash
-   pip install gunicorn
-   gunicorn -w 4 app:app
-   ```
-
-2. Configurar un servidor web como Nginx como proxy reverso.
-
-3. Considerar una base de datos más robusta como PostgreSQL o MySQL para entornos con alta carga.
-
-### Despliegue con Docker
-
-El proyecto incluye un archivo `docker-compose.yml` para facilitar el despliegue con Docker:
-
-```bash
-# Construir y levantar los contenedores
-docker-compose up -d
-
-# Ver logs
-docker-compose logs -f
-
-# Detener contenedores
-docker-compose down
-```
-
-## Diagnóstico y solución de problemas
-
-Si tienes problemas con el sistema:
-
-1. Verifica los logs de la aplicación para identificar errores.
-2. Para problemas con el simulador automático en PythonAnywhere, visita: `/api/simulador/forzar_inicio`.
-3. Asegúrate de que la zona horaria esté configurada correctamente para mostrar los horarios de Argentina.
-4. Revisa la conectividad a la base de datos y los permisos de escritura.
-
-## Contribuir
-
-Las contribuciones son bienvenidas! Para contribuir:
-
-1. Haz un fork del repositorio.
-2. Crea una rama para tu función (`git checkout -b feature/nueva-funcion`).
-3. Realiza tus cambios y hazles commit (`git commit -am 'Agrega nueva función'`).
-4. Sube tus cambios a tu repositorio (`git push origin feature/nueva-funcion`).
-5. Abre un Pull Request.
+## Despliegue
+- Compatible con PythonAnywhere, Docker y despliegue local.
+- Incluye archivo `docker-compose.yml` para despliegue rápido.
 
 ## Contacto
-
-Para preguntas o soporte, por favor contacta a través de:
 - Email: fegea@uade.edu.ar
 - GitHub: [fedeegea](https://github.com/fedeegea)
+
+---
+
+**Actualizado: 2025**

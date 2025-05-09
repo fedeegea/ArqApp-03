@@ -18,12 +18,33 @@ from src.core.db_service import (
     insertar_evento, obtener_estadisticas
 )
 from src.simulador.simulador_auto import valijas_activas, iniciar_simulador
+from src.eda.productor_kafka import publicar_evento_equipaje
 
 # Configuración de logging
 logger = logging.getLogger('api-routes')
 
 # Crear Blueprint para las rutas API
 api_bp = Blueprint('api', __name__)
+
+def agregar_valija_a_simulador(id_valija, origen, destino, peso, estado_actual):
+    try:
+        from src.simulador.simulador_auto import valijas_activas
+        from datetime import timedelta
+        from src.core.config import get_datetime_argentina
+        import random
+        if id_valija not in valijas_activas and estado_actual in ['equipaje_escaneado', 'equipaje_cargado']:
+            tiempo_proxima_accion = get_datetime_argentina() + timedelta(seconds=random.randint(30, 120))
+            valijas_activas[id_valija] = {
+                'id': id_valija,
+                'origen': origen,
+                'destino': destino,
+                'peso': peso,
+                'estado_actual': estado_actual,
+                'tiempo_proxima_accion': tiempo_proxima_accion
+            }
+            logger.info(f"Valija {id_valija} añadida manualmente al simulador para cambio de estado automático")
+    except Exception as e:
+        logger.error(f"No se pudo agregar la valija manual al simulador: {e}")
 
 @api_bp.route('/eventos')
 def get_eventos():
@@ -118,6 +139,17 @@ def agregar_equipaje():
         
         # Insertar en la base de datos
         insertar_evento(id_valija, evento, origen, destino, float(peso), timestamp)
+        # Publicar evento en Kafka
+        publicar_evento_equipaje({
+            'equipaje_id': id_valija,
+            'estado': evento,
+            'timestamp': int(get_datetime_argentina().timestamp()),
+            'origen': origen,
+            'destino': destino,
+            'peso': float(peso)
+        })
+        # Agregar a simulador para cambio de estado automático
+        agregar_valija_a_simulador(id_valija, origen, destino, float(peso), evento)
         
         # Devolver resultado
         return jsonify({
@@ -169,6 +201,17 @@ def agregar_evento():
         
         # Insertar nuevo evento
         insertar_evento(id_valija, evento, origen, destino, peso, timestamp)
+        # Publicar evento en Kafka
+        publicar_evento_equipaje({
+            'equipaje_id': id_valija,
+            'estado': evento,
+            'timestamp': int(get_datetime_argentina().timestamp()),
+            'origen': origen,
+            'destino': destino,
+            'peso': float(peso)
+        })
+        # Agregar a simulador para cambio de estado automático si corresponde
+        agregar_valija_a_simulador(id_valija, origen, destino, float(peso), evento)
         
         # Devolver resultado
         return jsonify({

@@ -208,33 +208,57 @@
                 url: '/api/estadisticas',
                 type: 'GET',
                 success: function(data) {
-                    // Actualizar contadores
-                    $('#total-equipajes').text(data.valijas_unicas);
-                    $('#eventos-recientes').text(data.ultimas_24h);
+                    console.log("Estadísticas recibidas:", data);  // Para depuración
+                    
+                    // Asegurar valores numéricos para los contadores
+                    const totalEquipajes = parseInt(data.valijas_unicas) || 0;
+                    const ultimasHoras = parseInt(data.ultimas_24h) || 0;
+                    
+                    // Actualizar contadores generales
+                    $('#total-equipajes').text(totalEquipajes);
+                    $('#eventos-recientes').text(ultimasHoras);
+                    
+                    // Inicializar contadores específicos por evento
+                    let escaneados = 0;
+                    let entregados = 0;
                     
                     // Extraer datos para el gráfico
                     const tipos = [];
                     const cantidades = [];
-                    let escaneados = 0;
-                    let entregados = 0;
                     
-                    data.por_tipo.forEach(function(item) {
-                        tipos.push(item.evento.replace('equipaje_', ''));
-                        cantidades.push(item.cantidad);
-                        
-                        if (item.evento === 'equipaje_escaneado') {
-                            escaneados = item.cantidad;
-                        } else if (item.evento === 'equipaje_entregado') {
-                            entregados = item.cantidad;
-                        }
-                    });
+                    // Asegurar que data.por_tipo sea un array
+                    if (Array.isArray(data.por_tipo)) {
+                        data.por_tipo.forEach(function(item) {
+                            // Verificar que el item tenga las propiedades necesarias
+                            if (item && item.evento && item.cantidad !== undefined) {
+                                const tipo = item.evento.replace('equipaje_', '');
+                                const cantidad = parseInt(item.cantidad) || 0;
+                                
+                                tipos.push(tipo);
+                                cantidades.push(cantidad);
+                                
+                                // Guardar valores específicos para contadores
+                                if (item.evento === 'equipaje_escaneado') {
+                                    escaneados = cantidad;
+                                } else if (item.evento === 'equipaje_entregado') {
+                                    entregados = cantidad;
+                                }
+                            }
+                        });
+                    } else {
+                        console.error("Error: data.por_tipo no es un array", data.por_tipo);
+                    }
                     
-                    // Actualizar contadores específicos
+                    // Actualizar contadores específicos asegurando valores numéricos
                     $('#equipajes-escaneados').text(escaneados);
                     $('#equipajes-entregados').text(entregados);
                     
                     // Actualizar o crear gráfico
-                    actualizarGraficoEventos(tipos, cantidades);
+                    if (tipos.length > 0) {
+                        actualizarGraficoEventos(tipos, cantidades);
+                    } else {
+                        console.warn("No hay datos para el gráfico de eventos");
+                    }
                 },
                 error: function(err) {
                     console.error('Error al cargar estadísticas:', err);
@@ -314,7 +338,7 @@
                 type: 'GET',
                 success: function(data) {
                     // Limitar a 10 eventos recientes
-                    const eventosRecientes = data.slice(0, 10);
+                    const eventosRecientes = Array.isArray(data) ? data.slice(0, 10) : [];
                     
                     if (eventosRecientes.length === 0) {
                         $('#lista-eventos-recientes').html(
@@ -329,6 +353,8 @@
                     let html = '';
                     
                     eventosRecientes.forEach(function(evento) {
+                        if (!evento || !evento.evento) return;  // Ignorar eventos inválidos
+                        
                         let icono = '';
                         let badge = '';
                         
@@ -351,6 +377,11 @@
                                 badge = 'bg-secondary';
                         }
                         
+                        const idValija = evento.id_valija || 'ID-DESCONOCIDO';
+                        const origen = evento.origen || 'Origen desconocido';
+                        const destino = evento.destino || 'Destino desconocido';
+                        const peso = evento.peso || 0;
+                        
                         html += `
                             <div class="list-group-item">
                                 <div class="d-flex align-items-center">
@@ -361,12 +392,12 @@
                                         <div class="d-flex justify-content-between align-items-center">
                                             <h6 class="mb-0">
                                                 <span class="badge ${badge}">${evento.evento.replace('equipaje_', '')}</span>
-                                                <small class="ms-2 text-muted">${evento.id_valija.substring(0, 8)}...</small>
+                                                <small class="ms-2 text-muted">${idValija.substring(0, 8)}...</small>
                                             </h6>
                                             <small class="text-muted">${formatearFecha(evento.timestamp)}</small>
                                         </div>
                                         <small>
-                                            ${evento.origen} → ${evento.destino} (${evento.peso} kg)
+                                            ${origen} → ${destino} (${peso} kg)
                                         </small>
                                     </div>
                                 </div>
@@ -408,15 +439,20 @@
                         $('#simulador-estado').removeClass('bg-success').addClass('bg-danger').text('Inactivo');
                     }
                     
-                    $('#valijas-activas').text(data.valijas_activas);
-                    $('#max-valijas').text(data.max_valijas);
-                    $('#intervalo-generacion').text(data.intervalo_generacion + ' segundos');
+                    // Asegurar valores numéricos
+                    const valijasActivas = parseInt(data.valijas_activas) || 0;
+                    const maxValijas = parseInt(data.max_valijas) || 1;
+                    const intervaloGeneracion = parseInt(data.intervalo_generacion) || 0;
+                    
+                    $('#valijas-activas').text(valijasActivas);
+                    $('#max-valijas').text(maxValijas);
+                    $('#intervalo-generacion').text(intervaloGeneracion + ' segundos');
                     $('#ultima-actualizacion').text(new Date(data.timestamp).toLocaleTimeString());
                     
-                    // Actualizar barra de progreso
-                    const porcentaje = (data.valijas_activas / data.max_valijas) * 100;
+                    // Actualizar barra de progreso con validación para evitar divisiones por cero
+                    const porcentaje = maxValijas > 0 ? Math.min(100, (valijasActivas / maxValijas) * 100) : 0;
                     $('#progress-valijas-activas').css('width', porcentaje + '%');
-                    $('#contador-valijas-activas').text(`${data.valijas_activas} de ${data.max_valijas} valijas activas`);
+                    $('#contador-valijas-activas').text(`${valijasActivas} de ${maxValijas} valijas activas`);
                     
                     // Cargar detalle de valijas activas
                     cargarValijasActivas();
@@ -440,7 +476,7 @@
                 url: '/api/simulador/valijas_activas',
                 type: 'GET',
                 success: function(data) {
-                    if (data.length === 0) {
+                    if (!Array.isArray(data) || data.length === 0) {
                         $('#tabla-valijas-activas').html(
                             '<tr><td colspan="4" class="text-center">' +
                             'No hay valijas en procesamiento actualmente' +
@@ -452,6 +488,8 @@
                     let html = '';
                     
                     data.forEach(function(valija) {
+                        if (!valija || !valija.id_valija) return; // Ignorar valijas inválidas
+                        
                         let badgeClass = '';
                         let estadoTexto = '';
                         
@@ -466,23 +504,28 @@
                                 break;
                             default:
                                 badgeClass = 'bg-secondary';
-                                estadoTexto = valija.estado_actual;
+                                estadoTexto = valija.estado_actual || 'Desconocido';
                         }
                         
+                        // Valores por defecto en caso de que falten datos
+                        const origen = valija.origen || 'Origen desconocido';
+                        const destino = valija.destino || 'Destino desconocido';
+                        const tiempoRestante = parseInt(valija.tiempo_restante_segundos) || 0;
+                        
                         // Formatear tiempo restante
-                        let tiempoRestante = '';
-                        if (valija.tiempo_restante_segundos < 60) {
-                            tiempoRestante = `${valija.tiempo_restante_segundos} seg.`;
+                        let tiempoRestanteFormateado = '';
+                        if (tiempoRestante < 60) {
+                            tiempoRestanteFormateado = `${tiempoRestante} seg.`;
                         } else {
-                            tiempoRestante = `${Math.floor(valija.tiempo_restante_segundos / 60)} min. ${valija.tiempo_restante_segundos % 60} seg.`;
+                            tiempoRestanteFormateado = `${Math.floor(tiempoRestante / 60)} min. ${tiempoRestante % 60} seg.`;
                         }
                         
                         html += `
                             <tr>
                                 <td><small>${valija.id_valija.substring(0, 8)}...</small></td>
                                 <td><span class="badge ${badgeClass}">${estadoTexto}</span></td>
-                                <td><small>${valija.origen} → ${valija.destino}</small></td>
-                                <td><small>${tiempoRestante}</small></td>
+                                <td><small>${origen} → ${destino}</small></td>
+                                <td><small>${tiempoRestanteFormateado}</small></td>
                             </tr>
                         `;
                     });

@@ -20,6 +20,8 @@ from src.core.config import Config, get_datetime_argentina
 from src.core.db_service import inicializar_db
 from src.simulador.simulador_auto import iniciar_simulador
 from src.api.routes import api_bp
+# Agregar import para el productor Kafka
+from src.eda.productor_kafka import publicar_evento_equipaje
 
 # Configuración de logging
 logging.basicConfig(
@@ -90,10 +92,12 @@ def inicializar_aplicacion():
         except Exception as e:
             logger.error(f"Error al crear la base de datos: {e}")
 
-    # Iniciar el simulador automático si se solicita
-    if os.environ.get('START_SIMULATOR', 'False') == 'True':
+    # En desarrollo local, siempre activar el simulador automáticamente a menos que se desactive explícitamente
+    if os.environ.get('DISABLE_SIMULATOR', 'False') != 'True':
         try:
             logger.info("Iniciando simulador automático de equipajes...")
+            # Forzar la variable de entorno a True para asegurar que el simulador se inicie
+            os.environ['START_SIMULATOR'] = 'True'
             simulador_iniciado = iniciar_simulador()
             if simulador_iniciado:
                 logger.info("Simulador automático iniciado correctamente")

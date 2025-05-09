@@ -58,7 +58,7 @@ def procesar_equipajes_activos():
     valijas_a_eliminar = []
     
     # Verificar cada valija activa
-    for id_valija, info in valijas_activas.items():
+    for id_valija, info in list(valijas_activas.items()):
         # Si es hora de la próxima acción
         if get_datetime_argentina() >= info['tiempo_proxima_accion']:
             estado_actual = info['estado_actual']
@@ -75,10 +75,14 @@ def procesar_equipajes_activos():
                     seconds=random.randint(60, 180))
                 
             elif estado_actual == 'equipaje_cargado':
-                # Cambiar a estado entregado
-                insertar_evento(id_valija, 'equipaje_entregado', 
-                               info['origen'], info['destino'], info['peso'])
-                
+                # 1 de cada 20 equipajes se marca como perdido
+                if random.randint(1, 20) == 1:
+                    insertar_evento(id_valija, 'equipaje_perdido', 
+                                   info['origen'], info['destino'], info['peso'])
+                    logger.warning(f"Valija {id_valija} marcada como PERDIDA por el simulador")
+                else:
+                    insertar_evento(id_valija, 'equipaje_entregado', 
+                                   info['origen'], info['destino'], info['peso'])
                 # Marcar para eliminar de valijas activas
                 valijas_a_eliminar.append(id_valija)
     
@@ -115,6 +119,22 @@ def cargar_estado_inicial():
         logger.info(f"Se cargaron {len(valijas_incompletas)} valijas incompletas para seguimiento")
     except Exception as e:
         logger.error(f"Error al cargar estado inicial: {e}")
+
+def agregar_valija_a_simulador(id_valija, origen, destino, peso, estado_actual):
+    """Agrega una valija manual al seguimiento automático si corresponde."""
+    from src.core.config import get_datetime_argentina
+    import random
+    if id_valija not in valijas_activas and estado_actual in ['equipaje_escaneado', 'equipaje_cargado']:
+        tiempo_proxima_accion = get_datetime_argentina() + timedelta(seconds=random.randint(30, 120))
+        valijas_activas[id_valija] = {
+            'id': id_valija,
+            'origen': origen,
+            'destino': destino,
+            'peso': peso,
+            'estado_actual': estado_actual,
+            'tiempo_proxima_accion': tiempo_proxima_accion
+        }
+        logger.info(f"Valija {id_valija} añadida manualmente al simulador para cambio de estado automático")
 
 def simulador_eventos():
     """Función principal que ejecuta el simulador de eventos."""

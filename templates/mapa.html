@@ -171,6 +171,12 @@
                                 <i class="fas fa-check-circle text-warning me-1"></i> Entregado
                             </label>
                         </div>
+                        <div class="form-check">
+                            <input class="form-check-input filtro-estado" type="checkbox" value="equipaje_perdido" id="check-perdido" checked>
+                            <label class="form-check-label" for="check-perdido">
+                                <i class="fas fa-exclamation-triangle text-danger me-1"></i> Perdido
+                            </label>
+                        </div>
                     </div>
                     
                     <div class="mb-3">
@@ -236,7 +242,7 @@
         let valijaSeleccionada = null;
         let datosValijas = [];
         let filtrosActuales = {
-            estados: ['equipaje_escaneado', 'equipaje_cargado', 'equipaje_entregado'],
+            estados: ['equipaje_escaneado', 'equipaje_cargado', 'equipaje_entregado', 'equipaje_perdido'],
             aeropuerto: '',
             busqueda: ''
         };
@@ -328,24 +334,23 @@
             
             // Aplicar filtros a los datos
             const valijasFiltradas = datosValijas.filter(valija => {
+                // Validar campos requeridos
+                if (!valija || !valija.id_valija || !valija.estado) return false;
                 // Filtrar por estado
                 if (!filtrosActuales.estados.includes(valija.estado)) {
                     return false;
                 }
-                
                 // Filtrar por aeropuerto
                 if (filtrosActuales.aeropuerto && 
                     !(valija.origen === filtrosActuales.aeropuerto || 
                       valija.destino === filtrosActuales.aeropuerto)) {
                     return false;
                 }
-                
                 // Filtrar por búsqueda
                 if (filtrosActuales.busqueda && 
                     !valija.id_valija.toLowerCase().includes(filtrosActuales.busqueda)) {
                     return false;
                 }
-                
                 return true;
             });
             
@@ -416,6 +421,10 @@
                 case 'equipaje_entregado':
                     iconoClass = 'fa-check-circle';
                     colorBorde = '#fd7e14'; // Naranja
+                    break;
+                case 'equipaje_perdido':
+                    iconoClass = 'fa-exclamation-triangle';
+                    colorBorde = '#dc3545'; // Rojo
                     break;
                 default:
                     iconoClass = 'fa-suitcase-rolling';
@@ -507,6 +516,11 @@
                         iconoClass = 'fa-check-circle text-warning';
                         estadoClass = 'bg-warning';
                         estadoTexto = 'Entregado';
+                        break;
+                    case 'equipaje_perdido':
+                        iconoClass = 'fa-exclamation-triangle text-danger';
+                        estadoClass = 'bg-danger';
+                        estadoTexto = 'Perdido';
                         break;
                     default:
                         iconoClass = 'fa-tag text-secondary';
@@ -602,6 +616,10 @@
                             statusClass = 'status-entregado';
                             statusText = 'Entregado';
                             break;
+                        case 'equipaje_perdido':
+                            statusClass = 'status-perdido';
+                            statusText = 'Perdido';
+                            break;
                         default:
                             statusClass = 'bg-light text-secondary';
                             statusText = 'Desconocido';
@@ -666,6 +684,10 @@
                             case 'equipaje_entregado':
                                 badgeClass = 'bg-warning';
                                 eventoTexto = 'Entregado';
+                                break;
+                            case 'equipaje_perdido':
+                                badgeClass = 'bg-danger';
+                                eventoTexto = 'Perdido';
                                 break;
                             default:
                                 badgeClass = 'bg-secondary';
